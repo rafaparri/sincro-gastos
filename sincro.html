@@ -223,14 +223,21 @@
 
   <main>
     <section class="view active" id="v-inicio">
-      <div class="hero-card"><h2>Saldo del grupo</h2><div class="people" id="people"></div><div class="settle" id="settle"></div></div>
-      <div class="alerts" id="alerts"></div>
-      <button class="scope-pill" id="scopePillHome" style="margin-top:18px">📁 <span class="t" id="scopeLabelHome">Todo el proyecto</span> ▾</button>
-      <div class="block" style="margin-top:6px">
-        <div class="block-head"><h2 id="monthTitle">Este mes</h2><span class="muted" id="monthTotal"></span></div>
-        <div id="folderExcludeHome"></div>
-        <div id="monthBudgetBar"></div>
-        <div class="list" id="recentList"></div>
+      <div id="inicioList">
+        <h2 style="margin-bottom:10px">Proyectos</h2>
+        <div id="projectTree"></div>
+      </div>
+      <div id="inicioDetail" class="hide">
+        <button class="scope-pill" id="backToList" style="margin-bottom:14px">‹ Proyectos</button>
+        <div class="hero-card"><h2>Saldo del grupo</h2><div class="people" id="people"></div><div class="settle" id="settle"></div></div>
+        <div class="alerts" id="alerts"></div>
+        <button class="scope-pill" id="scopePillHome" style="margin-top:18px">📁 <span class="t" id="scopeLabelHome">Todo el proyecto</span> ▾</button>
+        <div class="block" style="margin-top:6px">
+          <div class="block-head"><h2 id="monthTitle">Este mes</h2><span class="muted" id="monthTotal"></span></div>
+          <div id="folderExcludeHome"></div>
+          <div id="monthBudgetBar"></div>
+          <div class="list" id="recentList"></div>
+        </div>
       </div>
     </section>
 
@@ -372,7 +379,7 @@ const AVATARS=['🦊','🐼','🦁','🐯','🐸','🐙','🦉','🐺','🦄','�
 function freshState(){ return { projectName:'Sincro', members:[], categories:JSON.parse(JSON.stringify(DEFAULT_CATS)), expenses:[], groups:[], closedMonths:{}, settings:{monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null}, updatedAt:0 }; }
 function newMember(name,i){ return {id:'m'+uid(),name,color:COLORS[i%COLORS.length],avatar:{type:'emoji',value:AVATARS[i%AVATARS.length]},inviteCode:null}; }
 
-let state=freshState(), me=null, syncCode=localStorage.getItem(LS_CODE)||'', view='inicio', anaYm=ym(new Date()), form=null, charts={}, currentScope=null, accMonthTouched=false;
+let state=freshState(), me=null, syncCode=localStorage.getItem(LS_CODE)||'', view='inicio', anaYm=ym(new Date()), form=null, charts={}, currentScope=null, accMonthTouched=false, homeMode='list';
 const scopeKey=()=>'encomun_scope_'+(syncCode||'local');
 const photoCache={};
 
@@ -399,7 +406,7 @@ function groupDepth(id){ let d=0,g=groupById(id); while(g&&g.parentId){d++; g=gr
 function groupDescendantIds(id){ const out=[id]; groupChildren(id).forEach(c=>out.push(...groupDescendantIds(c.id))); return out; }
 function groupLabel(id){ if(!id) return 'Todo el proyecto'; const g=groupById(id); return g?(g.name+(g.closed?' 🔒':'')):'Todo el proyecto'; }
 let excludedFolders=new Set();
-function setCurrentScope(scope){ currentScope=scope||null; excludedFolders=new Set(); localStorage.setItem(scopeKey(), scope===null?'':scope); render(); }
+function setCurrentScope(scope){ currentScope=scope||null; excludedFolders=new Set(); homeMode='detail'; localStorage.setItem(scopeKey(), scope===null?'':scope); render(); }
 function accountMonthOf(e){ return e.accountMonth||ym(e.date); }
 function isMonthClosed(mm){ return !!(state.closedMonths&&state.closedMonths[mm]); }
 function availableMonths(){ const set=new Set(state.expenses.map(accountMonthOf)); set.add(ym(new Date())); if(state.closedMonths) Object.keys(state.closedMonths).forEach(m=>set.add(m)); return [...set].sort().reverse(); }
@@ -480,6 +487,9 @@ function render(){
   const lbl=scopeLabel(currentScope);
   ['scopeLabelHome','scopeLabelList','scopeLabelAna'].forEach(id=>{ if($(id)) $(id).textContent=lbl; });
   renderHome(); renderList(); renderAnalysis(); renderSettings();
+  $('inicioList').classList.toggle('hide',homeMode!=='list');
+  $('inicioDetail').classList.toggle('hide',homeMode!=='detail');
+  if(homeMode==='list') renderInicioList();
   $('syncBadge').className='sync '+syncStatus;
   $('syncText').textContent={off:'solo este móvil',connecting:'conectando…',on:'sincronizado',error:'error de sincronización'}[syncStatus];
 }
@@ -747,24 +757,33 @@ function treeMonthHtml(mm){
   }
   return html;
 }
+function treeBodyHtml(){
+  const months=availableMonths(); const openMonths=months.filter(m=>!isMonthClosed(m)); const closedMonths=months.filter(m=>isMonthClosed(m));
+  let html=`<button class="tree-row" id="allProjectsRow" style="width:100%;text-align:left">
+      <span class="tree-toggle">·</span><span class="tree-name" style="flex:1">🗂️ Todo el proyecto${!currentScope?' <span class="muted small">(aquí)</span>':''}</span>
+    </button>`;
+  openMonths.forEach(mm=>{ html+=treeMonthHtml(mm); });
+  if(closedMonths.length){ html+=`<button type="button" class="btn ghost sm" id="toggleClosedMonths" style="margin-top:10px">🔒 Ver ${closedMonths.length} ${closedMonths.length===1?'mes cerrado':'meses cerrados'}</button><div id="closedMonthsBox" class="hide">`+closedMonths.map(treeMonthHtml).join('')+`</div>`; }
+  return html;
+}
+function bindTreeEvents(root,onNavigate,redraw){
+  const allRow=root.querySelector('#allProjectsRow'); if(allRow) allRow.onclick=()=>{ setCurrentScope(null); onNavigate(); };
+  root.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); const mm=b.dataset.toggle; treeExpanded[mm]=!treeExpanded[mm]; redraw(); });
+  root.querySelectorAll('[data-scope]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); setCurrentScope(b.dataset.scope||null); onNavigate(); });
+  root.querySelectorAll('[data-addfolder]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); const mm=b.dataset.addfolder; const n=prompt('Nombre de la carpeta (por ejemplo, un viaje):',''); if(!n||!n.trim()) return; state.groups.push({id:'g'+uid(),name:n.trim(),parentId:'m:'+mm,closed:false,closedAt:null,closedSummary:null}); treeExpanded[mm]=true; commit(); redraw(); });
+  root.querySelectorAll('[data-more]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); openScopeActions(b.dataset.more,redraw); });
+  const tcm=root.querySelector('#toggleClosedMonths'); if(tcm) tcm.onclick=()=>{ root.querySelector('#closedMonthsBox').classList.toggle('hide'); };
+}
+function renderInicioList(){
+  const root=$('projectTree'); root.innerHTML=treeBodyHtml();
+  bindTreeEvents(root, render, renderInicioList);
+}
 function openGroupsSheet(){
   const sh=$('sheet');
   const draw=()=>{
-    const months=availableMonths(); const openMonths=months.filter(m=>!isMonthClosed(m)); const closedMonths=months.filter(m=>isMonthClosed(m));
-    let html=`<h2>Proyectos</h2>
-      <button class="tree-row" id="allProjectsRow" style="width:100%;text-align:left">
-        <span class="tree-toggle">·</span><span class="tree-name" style="flex:1">🗂️ Todo el proyecto${!currentScope?' <span class="muted small">(aquí)</span>':''}</span>
-      </button>`;
-    openMonths.forEach(mm=>{ html+=treeMonthHtml(mm); });
-    if(closedMonths.length){ html+=`<button type="button" class="btn ghost sm" id="toggleClosedMonths" style="margin-top:10px">🔒 Ver ${closedMonths.length} ${closedMonths.length===1?'mes cerrado':'meses cerrados'}</button><div id="closedMonthsBox" class="hide">`+closedMonths.map(treeMonthHtml).join('')+`</div>`; }
-    html+=`<div class="form-actions" style="margin-top:18px"><button class="btn ghost block" id="gSheetClose">Cerrar</button></div>`;
+    let html=`<h2>Proyectos</h2>`+treeBodyHtml()+`<div class="form-actions" style="margin-top:18px"><button class="btn ghost block" id="gSheetClose">Cerrar</button></div>`;
     sh.innerHTML=html;
-    $('allProjectsRow').onclick=()=>{ setCurrentScope(null); closeSheet(); };
-    sh.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); const mm=b.dataset.toggle; treeExpanded[mm]=!treeExpanded[mm]; draw(); });
-    sh.querySelectorAll('[data-scope]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); setCurrentScope(b.dataset.scope||null); closeSheet(); });
-    sh.querySelectorAll('[data-addfolder]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); const mm=b.dataset.addfolder; const n=prompt('Nombre de la carpeta (por ejemplo, un viaje):',''); if(!n||!n.trim()) return; state.groups.push({id:'g'+uid(),name:n.trim(),parentId:'m:'+mm,closed:false,closedAt:null,closedSummary:null}); treeExpanded[mm]=true; commit(); draw(); });
-    sh.querySelectorAll('[data-more]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); openScopeActions(b.dataset.more,draw); });
-    const tcm=$('toggleClosedMonths'); if(tcm) tcm.onclick=()=>{ $('closedMonthsBox').classList.toggle('hide'); };
+    bindTreeEvents(sh, closeSheet, draw);
     $('gSheetClose').onclick=closeSheet;
   };
   draw(); $('sheetBg').classList.add('open');
@@ -917,6 +936,7 @@ async function joinWithCode(code){
 
 /* ============================ ARRANQUE ============================ */
 document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>{ if(b.dataset.v==='add') openForm(null); showView(b.dataset.v); });
+$('backToList').onclick=()=>{ homeMode='list'; render(); };
 ['scopePillHome','scopePillList','scopePillAna'].forEach(id=>{ const el=$(id); if(el) el.onclick=openGroupsSheet; });
 let setupMode='new';
 document.querySelectorAll('#setupMode button').forEach(b=>b.onclick=()=>{ setupMode=b.dataset.mode; document.querySelectorAll('#setupMode button').forEach(x=>x.classList.toggle('on',x===b)); $('setupNew').classList.toggle('hide',setupMode==='join'); $('setupJoin').classList.toggle('hide',setupMode!=='join'); if(setupMode==='join') renderSetupRecent(); });
