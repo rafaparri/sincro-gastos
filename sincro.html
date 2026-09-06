@@ -623,7 +623,7 @@ $('fSave').onclick=()=>{
     const mode=(form.split&&form.split.mode)||'equal';
     if(mode==='custom'){ const shares={}; let s=0; $('fSplitCustom').querySelectorAll('input').forEach(i=>{ const v=parseNum(i.value); if(!isNaN(v)&&v>0){ shares[i.dataset.m]=Math.round(v*100)/100; s+=v; } }); if(Math.abs(s-e.amount)>0.011){ toast('Los importes deben sumar el total'); return; } e.split={mode:'custom',shares}; }
     else if(mode==='some'){ const among=(form.split.among||[]).filter(id=>state.members.some(m=>m.id===id)); if(!among.length){ toast('Elige al menos a una persona'); return; } e.split={mode:'some',among}; }
-    else e.split={mode:'equal'};
+    else e.split={mode:'some',among:state.members.map(m=>m.id)};
     if(!e.catId){ toast('Elige una categoría'); return; }
     if(form._photoRemoved&&e.photoId){ deletePhoto(e.photoId); e.photoId=null; }
     if(form._photoData){ if(e.photoId) deletePhoto(e.photoId); e.photoId=uid(); photoCache[e.photoId]=form._photoData; try{localStorage.setItem('encomun_photo_'+e.photoId,form._photoData);}catch(x){} pushPhoto(e.photoId,form._photoData); }
@@ -694,7 +694,7 @@ function renderSettings(){
   $('projList').querySelectorAll('.row').forEach(b=>b.onclick=()=>{ if(b.dataset.code===cur) return; switchProject(b.dataset.code==='local'?'':b.dataset.code); });
 }
 function openMemberSheet(m){
-  const sh=$('sheet'); const bal=balances()[m.id]||0; const canRemove=state.members.length>1&&Math.abs(bal)<0.005&&!state.expenses.some(e=>e.payerId===m.id||e.toId===m.id||shareOf(e,m.id)>0);
+  const sh=$('sheet'); const bal=balances()[m.id]||0; const neverTransacted=!state.expenses.some(e=>e.payerId===m.id||e.toId===m.id); const canRemoveClean=state.members.length>1&&Math.abs(bal)<0.005&&!state.expenses.some(e=>e.payerId===m.id||e.toId===m.id||shareOf(e,m.id)>0); const canForceRemove=state.members.length>1&&neverTransacted&&!canRemoveClean;
   let av=JSON.parse(JSON.stringify(m.avatar||{type:'emoji',value:'🦊'})), color=m.color, nameVal=m.name;
   const draw=()=>{ sh.innerHTML=`<h2>Persona</h2>
     <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">${avHtml({name:nameVal,color,avatar:av},'lg')}<div style="flex:1"><div class="field" style="margin:0"><label for="mName">Nombre</label><input id="mName" class="input" value="${esc(nameVal)}"></div></div></div>
@@ -703,7 +703,7 @@ function openMemberSheet(m){
     <div class="field"><label>Color</label><div class="colors">${COLORS.map(c=>`<button type="button" data-col="${c}" class="${c===color?'on':''}" style="background:${c}"></button>`).join('')}</div></div>
     ${m.id!==me?`<div class="field"><button class="btn ghost sm" id="mSetMe">En este móvil soy yo</button></div>`:''}
     <div class="form-actions"><button class="btn ghost" id="mClose">Cancelar</button><button class="btn primary" id="mSave">Guardar</button></div>
-    ${canRemove?`<button class="btn danger block" id="mDel" style="margin-top:14px">Quitar del proyecto</button>`:`<p class="help" style="margin-top:12px">Solo se puede quitar a una persona si no tiene apuntes ni saldo pendiente.</p>`}`;
+    ${canRemoveClean?`<button class="btn danger block" id="mDel" style="margin-top:14px">Quitar del proyecto</button>`:canForceRemove?`<button class="btn danger block" id="mDel" style="margin-top:14px">Quitar del proyecto (nunca ha pagado ni cobrado nada)</button><p class="help" style="margin-top:8px">Al quitarla, los gastos "a medias" se recalculan entre las personas que queden.</p>`:`<p class="help" style="margin-top:12px">Solo se puede quitar a una persona si no tiene apuntes ni saldo pendiente.</p>`}`;
     const keep=()=>{ nameVal=$('mName').value; };
     sh.querySelectorAll('[data-av]').forEach(b=>b.onclick=()=>{ keep(); av={type:'emoji',value:b.dataset.av}; draw(); });
     sh.querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>{ keep(); color=b.dataset.col; draw(); });
@@ -923,7 +923,11 @@ async function joinWithCode(code){
   try{
     const s=await col().doc(code).get(); if(!s.exists) return false; const d=s.data();
     if(d.app==='encomun-invite'&&d.project){ setCode(d.project); state=freshState(); me=d.memberId; localStorage.setItem(meKey(),me); saveLocal(); form=null; showView('inicio'); render(); await startSync(); return true; }
-    if(d.app==='encomun'&&d.members){ const my=prompt('Tu nombre:',''); if(!my||!my.trim()) return false; setCode(code); state=migrate(JSON.parse(JSON.stringify(d))); delete state.app; const m=newMember(my.trim(),state.members.length); state.members.push(m); me=m.id; state.updatedAt=Date.now(); saveLocal(); form=null; showView('inicio'); render(); await startSync(); return true; }
+    if(d.app==='encomun'&&d.members){
+      const existing=(d.members||[]).map(x=>x.name).join(', ');
+      if(!confirm(`Este es el código general del proyecto "${d.projectName||''}", no un código personal.\n\nSi continúas, entrarás como una persona NUEVA, distinta de: ${existing}.\n\nSi tú ya eres una de esas personas, cancela y usa tu código personal (Ajustes → Proyecto, en el dispositivo donde ya tienes cuenta).`)) return false;
+      const my=prompt('Tu nombre (nuevo en el proyecto):',''); if(!my||!my.trim()) return false; setCode(code); state=migrate(JSON.parse(JSON.stringify(d))); delete state.app; const m=newMember(my.trim(),state.members.length); state.members.push(m); me=m.id; state.updatedAt=Date.now(); saveLocal(); form=null; showView('inicio'); render(); await startSync(); return true;
+    }
     return false;
   }catch(e){ syncErr=e.message||String(e); return false; }
 }
