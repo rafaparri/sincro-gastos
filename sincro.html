@@ -216,6 +216,12 @@
 </div>
 
 <div id="app" class="hide">
+  <div id="blockedScreen" class="hide" style="padding:60px 24px;text-align:center;max-width:400px;margin:0 auto">
+    <h1 style="margin-bottom:12px">Acceso bloqueado</h1>
+    <p class="muted" style="margin-bottom:20px">La administradora de este proyecto ha bloqueado tu acceso.</p>
+    <button class="btn ghost block" id="blockedExit">Salir</button>
+  </div>
+  <div id="appContent">
   <header class="top">
     <div class="brand"><svg class="logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="80" cy="85" r="45" fill="#2563EB" opacity=".7" style="mix-blend-mode:multiply"/><circle cx="120" cy="85" r="45" fill="#8B5CF6" opacity=".7" style="mix-blend-mode:multiply"/><circle cx="100" cy="120" r="45" fill="#06B6D4" opacity=".7" style="mix-blend-mode:multiply"/><circle cx="100" cy="97" r="12" fill="#10B981"/></svg><div style="min-width:0"><div class="small muted" style="line-height:1">Sincro</div><h1 id="projTitle" style="font-size:1.25rem">Sincro</h1></div></div>
     <div style="display:flex;align-items:center;gap:10px"><button class="sync off" id="syncBadge"><span class="dot"></span><span id="syncText">sin sincronizar</span></button><span class="av sm" id="meAv"></span></div>
@@ -343,6 +349,7 @@
     <button data-v="analisis"><span class="i">📊</span>Análisis</button>
     <button data-v="ajustes"><span class="i">⚙️</span>Ajustes</button>
   </nav>
+  </div>
 </div>
 
 <div class="sheet-bg" id="sheetBg"><div class="sheet" id="sheet"></div></div>
@@ -373,7 +380,7 @@ const CAT_BG=['#fce7f3','#dcfce7','#dbeafe','#fef3c7','#ede9fe','#ffe4e6','#cffa
 function catBg(id){ const i=state.categories.findIndex(c=>c.id===id); return CAT_BG[(i<0?7:i)%CAT_BG.length]; }
 const AVATARS=['🦊','🐼','🦁','🐯','🐸','🐙','🦉','🐺','🦄','🐲','🐧','🐨','🐻','🦝','🐬','🦩','🐝','🦖','🐢','🦜','🐹','🦔','🐳','🦋'];
 
-function freshState(){ return { projectName:'Sincro', members:[], categories:JSON.parse(JSON.stringify(DEFAULT_CATS)), expenses:[], groups:[], closedMonths:{}, settings:{monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null}, updatedAt:0 }; }
+function freshState(){ return { projectName:'Sincro', adminId:null, members:[], categories:JSON.parse(JSON.stringify(DEFAULT_CATS)), expenses:[], groups:[], closedMonths:{}, settings:{monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null}, updatedAt:0 }; }
 function newMember(name,i){ return {id:'m'+uid(),name,color:COLORS[i%COLORS.length],avatar:{type:'emoji',value:AVATARS[i%AVATARS.length]},inviteCode:null}; }
 
 let state=freshState(), me=null, syncCode=localStorage.getItem(LS_CODE)||'', view='inicio', anaYm=ym(new Date()), form=null, charts={}, currentScope=null, accMonthTouched=false;
@@ -438,7 +445,7 @@ function slug(t){ return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036
 function genCode(name){ return (slug(name)||'x')+'-'+Math.random().toString(36).slice(2,6); }
 
 function loadLocal(){ state=freshState(); try{ const s=JSON.parse(localStorage.getItem(stateKey())); if(s&&s.members) state=migrate(s); }catch(e){} me=localStorage.getItem(meKey())||null; if(!state.members.find(m=>m.id===me)) me=state.members[0]?state.members[0].id:null; const storedScope=localStorage.getItem(scopeKey()); currentScope=(storedScope===null)?('m:'+ym(new Date())):(storedScope||null); if(currentScope&&currentScope.startsWith('g:')&&!groupById(currentScope.slice(2))) currentScope='m:'+ym(new Date()); }
-function migrate(s){ s.projectName=s.projectName||'Sincro'; s.settings=Object.assign({monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null},s.settings||{}); s.expenses=(s.expenses||[]).map(e=>Object.assign({groupId:null,accountMonth:null},e)); s.closedMonths=s.closedMonths||{}; s.categories=s.categories||JSON.parse(JSON.stringify(DEFAULT_CATS)); s.groups=(s.groups||[]).map(g=>(g.parentId&&g.parentId.startsWith('m:'))?g:Object.assign({},g,{parentId:'m:'+ym(new Date())})); s.members=(s.members||[]).map((m,i)=>Object.assign({color:COLORS[i%COLORS.length],avatar:{type:'emoji',value:AVATARS[i%AVATARS.length]},inviteCode:null},m)); return s; }
+function migrate(s){ s.projectName=s.projectName||'Sincro'; s.adminId=s.adminId||(s.members&&s.members[0]&&s.members[0].id)||null; s.settings=Object.assign({monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null},s.settings||{}); s.expenses=(s.expenses||[]).map(e=>Object.assign({groupId:null,accountMonth:null},e)); s.closedMonths=s.closedMonths||{}; s.categories=s.categories||JSON.parse(JSON.stringify(DEFAULT_CATS)); s.groups=(s.groups||[]).map(g=>(g.parentId&&g.parentId.startsWith('m:'))?g:Object.assign({},g,{parentId:'m:'+ym(new Date())})); s.members=(s.members||[]).map((m,i)=>Object.assign({color:COLORS[i%COLORS.length],avatar:{type:'emoji',value:AVATARS[i%AVATARS.length]},inviteCode:null,blocked:false},m)); return s; }
 function saveLocal(){ localStorage.setItem(stateKey(),JSON.stringify(state)); if(me) localStorage.setItem(meKey(),me); rememberProject(); }
 function projects(){ try{ return JSON.parse(localStorage.getItem(LS_PROJECTS))||[]; }catch(e){ return []; } }
 function rememberProject(){ const code=syncCode||'local'; const list=projects().filter(p=>p.code!==code); list.unshift({code,name:state.projectName}); localStorage.setItem(LS_PROJECTS,JSON.stringify(list.slice(0,20))); }
@@ -479,6 +486,11 @@ function computeAlerts(y){
 
 /* ============================ RENDER ============================ */
 function render(){
+  const myMember=state.members.find(x=>x.id===me);
+  const blocked=!!(myMember&&myMember.blocked);
+  $('blockedScreen').classList.toggle('hide',!blocked);
+  $('appContent').classList.toggle('hide',blocked);
+  if(blocked) return;
   $('projTitle').textContent=state.projectName||'Sincro'; document.title=(state.projectName||'Sincro')+' · Gastos compartidos';
   $('meAv').outerHTML=me?avHtml(me,'sm','id="meAv"'):'<span class="av sm" id="meAv" style="background:#ccc">?</span>';
   const lbl=scopeLabel(currentScope);
@@ -695,15 +707,18 @@ function renderSettings(){
 }
 function openMemberSheet(m){
   const sh=$('sheet'); const bal=balances()[m.id]||0; const neverTransacted=!state.expenses.some(e=>e.payerId===m.id||e.toId===m.id); const canRemoveClean=state.members.length>1&&Math.abs(bal)<0.005&&!state.expenses.some(e=>e.payerId===m.id||e.toId===m.id||shareOf(e,m.id)>0); const canForceRemove=state.members.length>1&&neverTransacted&&!canRemoveClean;
+  const iAmAdmin=me===state.adminId&&m.id!==state.adminId;
   let av=JSON.parse(JSON.stringify(m.avatar||{type:'emoji',value:'🦊'})), color=m.color, nameVal=m.name;
   const draw=()=>{ sh.innerHTML=`<h2>Persona</h2>
     <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">${avHtml({name:nameVal,color,avatar:av},'lg')}<div style="flex:1"><div class="field" style="margin:0"><label for="mName">Nombre</label><input id="mName" class="input" value="${esc(nameVal)}"></div></div></div>
     <div class="field"><label>Foto</label><div class="inline"><label class="btn ghost sm" for="mPhoto">📷 Subir foto</label><input id="mPhoto" type="file" accept="image/*" class="sr">${av.type==='photo'?'<button class="btn ghost sm" id="mPhotoDel">Quitar foto</button>':''}</div></div>
     <div class="field"><label>O elige un personaje</label><div class="avgrid">${AVATARS.map(a=>`<button type="button" data-av="${a}" class="${av.type==='emoji'&&av.value===a?'on':''}" style="background:${color};font-size:1.9rem">${a}</button>`).join('')}</div></div>
     <div class="field"><label>Color</label><div class="colors">${COLORS.map(c=>`<button type="button" data-col="${c}" class="${c===color?'on':''}" style="background:${c}"></button>`).join('')}</div></div>
+    ${m.id===state.adminId?`<p class="help">👑 Administradora de este proyecto.</p>`:''}
     ${m.id!==me?`<div class="field"><button class="btn ghost sm" id="mSetMe">En este móvil soy yo</button></div>`:''}
     <div class="form-actions"><button class="btn ghost" id="mClose">Cancelar</button><button class="btn primary" id="mSave">Guardar</button></div>
-    ${canRemoveClean?`<button class="btn danger block" id="mDel" style="margin-top:14px">Quitar del proyecto</button>`:canForceRemove?`<button class="btn danger block" id="mDel" style="margin-top:14px">Quitar del proyecto (nunca ha pagado ni cobrado nada)</button><p class="help" style="margin-top:8px">Al quitarla, los gastos "a medias" se recalculan entre las personas que queden.</p>`:`<p class="help" style="margin-top:12px">Solo se puede quitar a una persona si no tiene apuntes ni saldo pendiente.</p>`}`;
+    ${canRemoveClean?`<button class="btn danger block" id="mDel" style="margin-top:14px">Quitar del proyecto</button>`:canForceRemove?`<button class="btn danger block" id="mDel" style="margin-top:14px">Quitar del proyecto (nunca ha pagado ni cobrado nada)</button><p class="help" style="margin-top:8px">Al quitarla, los gastos "a medias" se recalculan entre las personas que queden.</p>`:`<p class="help" style="margin-top:12px">Solo se puede quitar a una persona si no tiene apuntes ni saldo pendiente.</p>`}
+    ${iAmAdmin?`<div class="set-block"><h3>Como administradora</h3><p class="help" style="margin-bottom:10px">Estas opciones no comprueban saldos ni gastos: úsalas con cuidado.</p><div class="form-actions"><button class="btn danger sm" id="mForceDel">Eliminar de todas formas</button><button class="btn ghost sm" id="mBlock">${m.blocked?'Desbloquear':'Bloquear acceso'}</button></div></div>`:''}`;
     const keep=()=>{ nameVal=$('mName').value; };
     sh.querySelectorAll('[data-av]').forEach(b=>b.onclick=()=>{ keep(); av={type:'emoji',value:b.dataset.av}; draw(); });
     sh.querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>{ keep(); color=b.dataset.col; draw(); });
@@ -713,6 +728,8 @@ function openMemberSheet(m){
     $('mClose').onclick=closeSheet;
     $('mSave').onclick=()=>{ m.name=$('mName').value.trim()||m.name; m.avatar=av; m.color=color; closeSheet(); commit(); if(m.inviteCode) writeInvite(m); };
     const del=$('mDel'); if(del) del.onclick=()=>{ if(!confirm(`¿Quitar a ${m.name} del proyecto?`)) return; state.members=state.members.filter(x=>x.id!==m.id); if(m.inviteCode) deleteInvite(m.inviteCode); if(me===m.id) me=state.members[0].id; closeSheet(); commit(); };
+    const fdel=$('mForceDel'); if(fdel) fdel.onclick=()=>{ if(!confirm(`Vas a eliminar a ${m.name} sin comprobar saldos ni gastos. Sus apuntes se quedarán asignados a esta persona ya eliminada y podrían mostrarse raros. ¿Seguro?`)) return; state.members=state.members.filter(x=>x.id!==m.id); if(m.inviteCode) deleteInvite(m.inviteCode); if(me===m.id) me=state.members[0].id; closeSheet(); commit(); };
+    const blk=$('mBlock'); if(blk) blk.onclick=()=>{ m.blocked=!m.blocked; if(m.blocked&&m.inviteCode){ deleteInvite(m.inviteCode); m.inviteCode=null; } commit(); draw(); toast(m.blocked?'Acceso bloqueado':'Acceso desbloqueado'); };
   };
   draw(); $('sheetBg').classList.add('open');
 }
@@ -917,7 +934,7 @@ async function startSync(){
 }
 function setCode(code){ if(unsub){unsub();unsub=null;} syncCode=code; if(code) localStorage.setItem(LS_CODE,code); else localStorage.removeItem(LS_CODE); }
 function switchProject(code){ setCode(code); loadLocal(); saveLocal(); form=null; showView('inicio'); render(); startSync(); }
-function createProject(name,myName){ setCode('p-'+genCode(name)); state=freshState(); state.projectName=name; const m=newMember(myName,0); state.members=[m]; me=m.id; state.updatedAt=Date.now(); saveLocal(); form=null; showView('inicio'); render(); startSync(); }
+function createProject(name,myName){ setCode('p-'+genCode(name)); state=freshState(); state.projectName=name; const m=newMember(myName,0); state.members=[m]; state.adminId=m.id; me=m.id; state.updatedAt=Date.now(); saveLocal(); form=null; showView('inicio'); render(); startSync(); }
 async function joinWithCode(code){
   const db=ensureFirebase(); if(!db) return false;
   try{
@@ -934,6 +951,7 @@ async function joinWithCode(code){
 
 /* ============================ ARRANQUE ============================ */
 document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>{ if(b.dataset.v==='add') openForm(null); showView(b.dataset.v); });
+$('blockedExit').onclick=()=>{ localStorage.removeItem(stateKey()); localStorage.removeItem(meKey()); localStorage.removeItem(LS_CODE); location.reload(); };
 ['scopePillHome','scopePillList','scopePillAna'].forEach(id=>{ const el=$(id); if(el) el.onclick=openGroupsSheet; });
 let setupMode='new';
 document.querySelectorAll('#setupMode button').forEach(b=>b.onclick=()=>{ setupMode=b.dataset.mode; document.querySelectorAll('#setupMode button').forEach(x=>x.classList.toggle('on',x===b)); $('setupNew').classList.toggle('hide',setupMode==='join'); $('setupJoin').classList.toggle('hide',setupMode!=='join'); if(setupMode==='join') renderSetupRecent(); });
