@@ -485,11 +485,12 @@ function renderHome(){
   if(!st.length) sb.innerHTML=`<p class="even">Estáis en paz</p><p class="muted">Nadie debe nada a nadie.</p>`;
   else sb.innerHTML=`<h3>Para quedar en paz</h3>`+st.map((d,i)=>`<div class="debt">${avHtml(d.from)}<div class="txt">${nameHtml(d.from)} paga <b>${fmt(d.amount)}</b> a ${nameHtml(d.to)}</div><button class="btn sm" data-i="${i}">Registrar pago</button></div>`).join('');
   sb.querySelectorAll('button[data-i]').forEach(btn=>btn.onclick=()=>{ const d=st[btn.dataset.i]; openForm(null,{type:'transfer',amount:d.amount,payerId:d.from,toId:d.to}); showView('add'); });
-  const y=ym(new Date()); const alerts=computeAlerts(y);
+  const scopeMonth=(currentScope&&currentScope.startsWith('m:'))?currentScope.slice(2):ym(new Date());
+  const alerts=computeAlerts(scopeMonth);
   $('alerts').innerHTML=alerts.map(a=>`<div class="alert ${a.level}"><strong>${a.title}</strong>${a.text}</div>`).join('');
-  const list=expensesOf(y); $('monthTitle').textContent=ymLabel(y).replace(/^\w/,c=>c.toUpperCase()); $('monthTotal').textContent=fmt(totalOf(list));
-  const mb=state.settings.monthlyBudget; const mbb=$('monthBudgetBar');
-  if(mb){ const t=totalOf(list),p=Math.min(100,t/mb*100); mbb.innerHTML=`<div class="bar-row" style="border:0;padding-top:0"><div class="sub"><span>Presupuesto del mes</span><span>${fmt(t)} de ${fmt(mb)}</span></div><div class="track"><div class="fill ${p>=100?'over':p>=85?'near':''}" style="width:${p}%"></div></div></div>`; } else mbb.innerHTML='';
+  const list=scopedExpenses().filter(e=>e.type!=='transfer'); $('monthTitle').textContent=scopeLabel(currentScope); $('monthTotal').textContent=fmt(totalOf(list));
+  const mb=state.settings.monthlyBudget; const mbb=$('monthBudgetBar'); const isMonthScope=currentScope&&currentScope.startsWith('m:');
+  if(mb&&isMonthScope){ const t=totalOf(list),p=Math.min(100,t/mb*100); mbb.innerHTML=`<div class="bar-row" style="border:0;padding-top:0"><div class="sub"><span>Presupuesto del mes</span><span>${fmt(t)} de ${fmt(mb)}</span></div><div class="track"><div class="fill ${p>=100?'over':p>=85?'near':''}" style="width:${p}%"></div></div></div>`; } else mbb.innerHTML='';
   const recent=[...scopedExpenses()].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt).slice(0,8);
   $('recentList').innerHTML=recent.length?recent.map(rowHtml).join(''):`<p class="empty">Todavía no hay ningún apunte. Pulsa el + para añadir el primero.</p>`;
   bindRows($('recentList'));
