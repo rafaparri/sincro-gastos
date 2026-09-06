@@ -323,6 +323,8 @@
         <h2>Copias y exportación</h2>
         <div class="form-actions"><button class="btn ghost" id="exportCsv">Exportar CSV (Excel)</button><button class="btn ghost" id="exportJson">Copia de seguridad</button></div>
         <div class="form-actions"><label class="btn ghost block" for="importJson">Restaurar copia de seguridad</label><input id="importJson" type="file" accept="application/json" class="sr"></div>
+        <div class="form-actions"><label class="btn primary block" for="importAdd">Importar movimientos (añadir, sin borrar nada)</label><input id="importAdd" type="file" accept="application/json" class="sr"></div>
+        <div class="help">Para añadir gastos antiguos de otra app sin tocar lo que ya tienes aquí.</div>
         <div class="form-actions"><button class="btn danger block" id="wipe">Borrar todos los datos de este móvil</button></div>
       </div>
     </section>
@@ -791,8 +793,45 @@ function settingsBind(){
   $('syncBadge').onclick=()=>{ if(syncStatus==='error') alert('No se ha podido sincronizar.\n\nMotivo: '+(syncErr||'desconocido')+'\n\nSi estás viendo la app dentro de Claude, es normal: ahí las conexiones están bloqueadas. Ábrela desde su dirección de GitHub Pages.'); else if(syncStatus==='off') alert('Este proyecto solo existe en este móvil. Para compartirlo, crea un proyecto nuevo desde Ajustes.'); };
   $('exportCsv').onclick=exportCsv; $('exportJson').onclick=exportJson;
   $('importJson').onchange=ev=>{ const f=ev.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!s.members||!s.expenses) throw 0; if(!confirm('Esto sustituye todos los datos actuales por los de la copia. ¿Continuar?')) return; state=migrate(s); if(!state.members.find(m=>m.id===me)) me=(state.members[0]||{}).id||null; commit(); toast('Copia restaurada'); }catch(e){ toast('El archivo no es una copia válida'); } ev.target.value=''; }; r.readAsText(f); };
+  $('importAdd').onchange=ev=>{ const f=ev.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const items=JSON.parse(r.result); if(!Array.isArray(items)) throw 0; const res=importAppendExpenses(items); toast(`Añadidos ${res.added} movimientos${res.skipped?`, ${res.skipped} sin persona reconocida`:''}`); }catch(e){ toast('El archivo no tiene el formato esperado'); } ev.target.value=''; }; r.readAsText(f); };
   $('wipe').onclick=()=>{ if(!confirm('Se borran los datos de este móvil. Lo sincronizado sigue en la nube y se recupera con tu código. ¿Continuar?')) return; Object.keys(localStorage).filter(k=>k.startsWith('encomun_')).forEach(k=>localStorage.removeItem(k)); location.reload(); };
   $('q').oninput=renderList;
+}
+const CAT_KEYWORDS={
+  c2:['mercadona','carrefour','dia','super','lidl'],
+  c4:['gasolina','lubricante','autopista','peaje','parking','a/a'],
+  c6:['creatina','electrolitos','farmacia','proteina'],
+  c3:['desayuno','helado','cena','comida','restaurante'],
+  c5:['cine','ocio'],
+  c7:['hotel','fresquito','viaje','airbnb'],
+};
+function guessCategory(concept){
+  const t=(concept||'').toLowerCase();
+  for(const cid in CAT_KEYWORDS){ if(CAT_KEYWORDS[cid].some(k=>t.includes(k))) return state.categories.find(c=>c.id===cid)?cid:'c8'; }
+  return 'c8';
+}
+function findMemberByName(name){
+  if(!name) return null; const t=name.toLowerCase();
+  return state.members.find(m=>t.includes(m.name.toLowerCase())||m.name.toLowerCase().includes(t))||null;
+}
+function importAppendExpenses(items){
+  let added=0, skipped=0;
+  items.forEach(it=>{
+    const payer=findMemberByName(it.payerName||it.payer);
+    if(!payer){ skipped++; return; }
+    const date=it.date||todayStr();
+    const base={ id:'imp'+uid(), date, note:it.note||'', photoId:null, groupId:null, accountMonth:ym(date), createdAt:Date.now(), updatedAt:Date.now() };
+    if(it.type==='transfer'){
+      const to=findMemberByName(it.toName||it.to)||state.members.find(m=>m.id!==payer.id);
+      if(!to){ skipped++; return; }
+      state.expenses.push(Object.assign({},base,{type:'transfer',amount:Math.round(Number(it.amount)*100)/100,concept:'',payerId:payer.id,toId:to.id,catId:null,split:{mode:'equal'}}));
+    } else {
+      state.expenses.push(Object.assign({},base,{type:'gasto',amount:Math.round(Number(it.amount)*100)/100,concept:it.concept||'',payerId:payer.id,toId:null,catId:it.catId||guessCategory(it.concept),split:{mode:'equal'}}));
+    }
+    added++;
+  });
+  if(added) commit();
+  return {added,skipped};
 }
 function exportCsv(){
   const ms=state.members; const rows=[['Fecha','Tipo','Concepto','Categoría','Importe','Pagó','A quién',...ms.map(m=>'Parte '+m.name),'Nota']];
