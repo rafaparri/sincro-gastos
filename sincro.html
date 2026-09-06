@@ -228,6 +228,7 @@
       <button class="scope-pill" id="scopePillHome" style="margin-top:18px">📁 <span class="t" id="scopeLabelHome">Todo el proyecto</span> ▾</button>
       <div class="block" style="margin-top:6px">
         <div class="block-head"><h2 id="monthTitle">Este mes</h2><span class="muted" id="monthTotal"></span></div>
+        <div id="folderExcludeHome"></div>
         <div id="monthBudgetBar"></div>
         <div class="list" id="recentList"></div>
       </div>
@@ -235,6 +236,7 @@
 
     <section class="view" id="v-gastos">
       <button class="scope-pill" id="scopePillList">📁 <span class="t" id="scopeLabelList">Todo el proyecto</span> ▾</button>
+      <div id="folderExcludeList"></div>
       <div class="field" style="margin-bottom:10px"><label for="q" class="sr">Buscar</label><input id="q" class="input" placeholder="Buscar por concepto, categoría, nota o persona"></div>
       <div class="seg" id="filterCat" style="margin-bottom:6px"></div>
       <div id="fullList"></div>
@@ -396,16 +398,25 @@ function groupChildren(id){ return state.groups.filter(g=>g.parentId===id); }
 function groupDepth(id){ let d=0,g=groupById(id); while(g&&g.parentId){d++; g=groupById(g.parentId);} return d; }
 function groupDescendantIds(id){ const out=[id]; groupChildren(id).forEach(c=>out.push(...groupDescendantIds(c.id))); return out; }
 function groupLabel(id){ if(!id) return 'Todo el proyecto'; const g=groupById(id); return g?(g.name+(g.closed?' 🔒':'')):'Todo el proyecto'; }
-function setCurrentScope(scope){ currentScope=scope||null; localStorage.setItem(scopeKey(), scope===null?'':scope); render(); }
+let excludedFolders=new Set();
+function setCurrentScope(scope){ currentScope=scope||null; excludedFolders=new Set(); localStorage.setItem(scopeKey(), scope===null?'':scope); render(); }
 function accountMonthOf(e){ return e.accountMonth||ym(e.date); }
 function isMonthClosed(mm){ return !!(state.closedMonths&&state.closedMonths[mm]); }
 function availableMonths(){ const set=new Set(state.expenses.map(accountMonthOf)); set.add(ym(new Date())); if(state.closedMonths) Object.keys(state.closedMonths).forEach(m=>set.add(m)); return [...set].sort().reverse(); }
 function scopeLabel(scope){ if(!scope) return 'Todo el proyecto'; if(scope.startsWith('m:')){ const mm=scope.slice(2); const t=ymLabel(mm).replace(/^\w/,c=>c.toUpperCase()); return t+(isMonthClosed(mm)?' 🔒':''); } if(scope.startsWith('g:')){ const g=groupById(scope.slice(2)); return g?(g.name+(g.closed?' 🔒':'')):'Todo el proyecto'; } return 'Todo el proyecto'; }
 function scopedExpenses(){
   if(!currentScope) return state.expenses;
-  if(currentScope.startsWith('m:')){ const mm=currentScope.slice(2); return state.expenses.filter(e=>accountMonthOf(e)===mm); }
+  if(currentScope.startsWith('m:')){ const mm=currentScope.slice(2); return state.expenses.filter(e=>accountMonthOf(e)===mm&&!(e.groupId&&excludedFolders.has(e.groupId))); }
   if(currentScope.startsWith('g:')){ const gid=currentScope.slice(2); const ids=groupDescendantIds(gid); return state.expenses.filter(e=>e.groupId&&ids.includes(e.groupId)); }
   return state.expenses;
+}
+function folderExcludeChipsHtml(){
+  if(!currentScope||!currentScope.startsWith('m:')) return '';
+  const mm=currentScope.slice(2); const kids=groupsUnderMonth(mm); if(!kids.length) return '';
+  return `<div class="chips" style="margin:10px 0">`+kids.map(g=>`<button type="button" class="fx-chip" data-fx="${g.id}" style="${excludedFolders.has(g.id)?'':'border-color:var(--blue);background:#eff6ff;color:var(--blue)'}">${excludedFolders.has(g.id)?'☐':'☑'} ${esc(g.name)}</button>`).join('')+`</div>`;
+}
+function bindFolderExcludeChips(root){
+  root.querySelectorAll('[data-fx]').forEach(b=>b.onclick=()=>{ const id=b.dataset.fx; if(excludedFolders.has(id)) excludedFolders.delete(id); else excludedFolders.add(id); render(); });
 }
 function closeMonthFlow(mm,after){
   const list=state.expenses.filter(e=>accountMonthOf(e)===mm);
@@ -491,21 +502,24 @@ function renderHome(){
   const list=scopedExpenses().filter(e=>e.type!=='transfer'); $('monthTitle').textContent=scopeLabel(currentScope); $('monthTotal').textContent=fmt(totalOf(list));
   const mb=state.settings.monthlyBudget; const mbb=$('monthBudgetBar'); const isMonthScope=currentScope&&currentScope.startsWith('m:');
   if(mb&&isMonthScope){ const t=totalOf(list),p=Math.min(100,t/mb*100); mbb.innerHTML=`<div class="bar-row" style="border:0;padding-top:0"><div class="sub"><span>Presupuesto del mes</span><span>${fmt(t)} de ${fmt(mb)}</span></div><div class="track"><div class="fill ${p>=100?'over':p>=85?'near':''}" style="width:${p}%"></div></div></div>`; } else mbb.innerHTML='';
+  $('folderExcludeHome').innerHTML=folderExcludeChipsHtml(); bindFolderExcludeChips($('folderExcludeHome'));
   const recent=[...scopedExpenses()].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt).slice(0,8);
   $('recentList').innerHTML=recent.length?recent.map(rowHtml).join(''):`<p class="empty">Todavía no hay ningún apunte. Pulsa el + para añadir el primero.</p>`;
   bindRows($('recentList'));
 }
 function accBadge(e){ const am=accountMonthOf(e); return am!==ym(e.date) ? ` · <span style="color:var(--blue)">cuenta en ${ymLabel(am)}</span>` : ''; }
+function folderBadge(e){ if(!e.groupId) return ''; const g=groupById(e.groupId); return g?` · <span class="pill" style="padding:1px 8px;font-size:.72rem">📌 ${esc(g.name)}</span>`:''; }
 function rowHtml(e){
   if(e.type==='transfer') return `<button class="row" data-id="${e.id}"><span class="emoji" style="--cb:#d1fae5">💸</span><span><span class="t">${esc(mname(e.payerId))} pagó a ${esc(mname(e.toId))}</span><br><span class="s">${dateLabel(e.date)}${accBadge(e)}${e.note?' · '+esc(e.note):''}</span></span><span class="amt">${fmt(e.amount)}<small>pago</small></span></button>`;
   const c=cat(e.catId);
-  return `<button class="row" data-id="${e.id}"><span class="emoji" style="--cb:${catBg(e.catId)}">${c.emoji}</span><span><span class="t">${esc(e.concept||c.name)}</span><br><span class="s">${dateLabel(e.date)} · ${esc(c.name)} · pagó ${nameHtml(e.payerId)}${accBadge(e)}${e.photoId?' · 📷':''}</span></span><span class="amt">${fmt(e.amount)}<small>${splitLabel(e)}</small></span></button>`;
+  return `<button class="row" data-id="${e.id}"><span class="emoji" style="--cb:${catBg(e.catId)}">${c.emoji}</span><span><span class="t">${esc(e.concept||c.name)}${folderBadge(e)}</span><br><span class="s">${dateLabel(e.date)} · ${esc(c.name)} · pagó ${nameHtml(e.payerId)}${accBadge(e)}${e.photoId?' · 📷':''}</span></span><span class="amt">${fmt(e.amount)}<small>${splitLabel(e)}</small></span></button>`;
 }
 function splitLabel(e){ const mode=(e.split&&e.split.mode)||'equal'; if(mode==='custom') return 'importes'; const p=participants(e); if(mode==='equal'||p.length===state.members.length) return state.members.length===2?'a medias':'entre todos'; if(p.length===1) return 'solo '+mname(p[0]); return 'entre '+p.length; }
 function bindRows(root){ root.querySelectorAll('.row').forEach(r=>r.onclick=()=>openDetail(r.dataset.id)); }
 
 let filterCat='all';
 function renderList(){
+  $('folderExcludeList').innerHTML=folderExcludeChipsHtml(); bindFolderExcludeChips($('folderExcludeList'));
   const fc=$('filterCat');
   fc.innerHTML=`<button data-c="all" class="${filterCat==='all'?'on':''}">Todo</button>`+state.categories.map(c=>`<button data-c="${c.id}" class="${filterCat===c.id?'on':''}">${c.emoji}</button>`).join('')+`<button data-c="transfer" class="${filterCat==='transfer'?'on':''}">💸</button>`;
   fc.querySelectorAll('button').forEach(b=>b.onclick=()=>{filterCat=b.dataset.c;renderList();});
