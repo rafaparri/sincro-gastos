@@ -715,21 +715,31 @@ function openMemberSheet(m){
 
 function groupsUnderMonth(mm){ return state.groups.filter(g=>g.parentId==='m:'+mm); }
 let treeExpanded={};
+function monthStatusHtml(mm){
+  const list=state.expenses.filter(e=>accountMonthOf(e)===mm);
+  if(!list.length) return `<span class="muted">sin movimientos</span>`;
+  const b=computeBalancesFor(list); const st=settlements(b);
+  if(!st.length) return `<span style="color:var(--ok)">✓ en paz</span>`;
+  return st.map(d=>`<span style="color:var(--bad)">${esc(mname(d.from))} debe ${fmt(d.amount)} a ${esc(mname(d.to))}</span>`).join('<br>');
+}
 function treeMonthHtml(mm){
   const closed=isMonthClosed(mm); const sc='m:'+mm; const label=ymLabel(mm).replace(/^\w/,c=>c.toUpperCase());
   const kids=groupsUnderMonth(mm); const exp=!!treeExpanded[mm];
   let html=`<div class="tree-row ${closed?'closed':''}">
     <button class="tree-toggle" data-toggle="${mm}">${exp?'▾':'▸'}</button>
-    <button class="tree-name" data-scope="${sc}">${closed?'🔒 ':'🗓️ '}${label}${currentScope===sc?' <span class="muted small">(aquí)</span>':''}</button>
+    <button class="tree-name" data-scope="${sc}"><span style="display:block">${closed?'🔒 ':'🗓️ '}${label}${currentScope===sc?' <span class="muted small">(aquí)</span>':''}</span><span class="small" style="display:block;font-weight:400;margin-top:2px">${monthStatusHtml(mm)}</span></button>
     <button class="tree-more" data-more="${sc}">⋯</button>
   </div>`;
   if(exp){
     html+=`<div class="tree-children">`;
     kids.forEach(g=>{
       const gsc='g:'+g.id;
+      const glist=state.expenses.filter(e=>e.groupId===g.id);
+      const gb=computeBalancesFor(glist); const gst=settlements(gb);
+      const gstatus=!glist.length?`<span class="muted">sin movimientos</span>`:(!gst.length?`<span style="color:var(--ok)">✓ en paz</span>`:gst.map(d=>`<span style="color:var(--bad)">${esc(mname(d.from))} debe ${fmt(d.amount)} a ${esc(mname(d.to))}</span>`).join('<br>'));
       html+=`<div class="tree-row child">
         <span class="tree-guide">└─</span>
-        <button class="tree-name" data-scope="${gsc}">${g.closed?'🔒 ':'📌 '}${esc(g.name)}${currentScope===gsc?' <span class="muted small">(aquí)</span>':''}</button>
+        <button class="tree-name" data-scope="${gsc}"><span style="display:block">${g.closed?'🔒 ':'📌 '}${esc(g.name)}${currentScope===gsc?' <span class="muted small">(aquí)</span>':''}</span><span class="small" style="display:block;font-weight:400;margin-top:2px">${gstatus}</span></button>
         <button class="tree-more" data-more="${gsc}">⋯</button>
       </div>`;
     });
