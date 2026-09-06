@@ -690,8 +690,8 @@ $('prevMonth').onclick=()=>{anaYm=shiftYm(anaYm,-1);renderAnalysis();}; $('nextM
 let guardOn=false;
 function renderSettings(){
   if(guardOn) return;
-  $('memberList').innerHTML=state.members.map(m=>`<div class="member-row" data-id="${m.id}">${avHtml(m)}<div><div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}</div><div class="s">${m.inviteCode?'código: '+esc(m.inviteCode):(m.id===me?'este móvil':'sin código')}</div></div><div class="acts"><button class="btn ghost sm" data-a="edit">Editar</button>${m.inviteCode?`<button class="btn ghost sm" data-a="share">Enviar código</button>`:''}</div></div>`).join('')||'<p class="empty">Todavía no hay nadie.</p>';
-  $('memberList').querySelectorAll('.member-row').forEach(row=>{ const m=state.members.find(x=>x.id===row.dataset.id); row.querySelector('[data-a=edit]').onclick=()=>openMemberSheet(m); const sh=row.querySelector('[data-a=share]'); if(sh) sh.onclick=()=>shareInvite(m); });
+  $('memberList').innerHTML=state.members.map(m=>`<div class="member-row" data-id="${m.id}">${avHtml(m)}<div><div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}</div><div class="s">${m.blocked?'🔒 bloqueada':m.inviteCode?'código: '+esc(m.inviteCode):(m.id===me?'este móvil':'sin código')}</div></div><div class="acts"><button class="btn ghost sm" data-a="edit">Editar</button>${m.inviteCode?`<button class="btn ghost sm" data-a="share">Enviar código</button>`:(m.id!==me&&!m.blocked?`<button class="btn ghost sm" data-a="gencode">Generar código</button>`:'')}</div></div>`).join('')||'<p class="empty">Todavía no hay nadie.</p>';
+  $('memberList').querySelectorAll('.member-row').forEach(row=>{ const m=state.members.find(x=>x.id===row.dataset.id); row.querySelector('[data-a=edit]').onclick=()=>openMemberSheet(m); const sh=row.querySelector('[data-a=share]'); if(sh) sh.onclick=()=>shareInvite(m); const gc=row.querySelector('[data-a=gencode]'); if(gc) gc.onclick=()=>generateCodeFor(m); });
   $('catEditor').innerHTML=state.categories.map(c=>`<div class="cat-edit" data-id="${c.id}"><input class="input ce-emoji" value="${esc(c.emoji)}" maxlength="4"><input class="input ce-name" value="${esc(c.name)}"><input class="input ce-budget" inputmode="decimal" value="${c.budget!=null?fmtN(c.budget):''}" placeholder="—"><input class="input ce-limit" inputmode="decimal" value="${c.limit!=null?fmtN(c.limit):''}" placeholder="—"><button class="x" title="Eliminar categoría">×</button></div>`).join('');
   $('catEditor').querySelectorAll('.cat-edit').forEach(row=>{ const c=state.categories.find(x=>x.id===row.dataset.id);
     const upd=()=>{ c.emoji=row.querySelector('.ce-emoji').value.trim()||'📦'; c.name=row.querySelector('.ce-name').value.trim()||c.name; const b=parseNum(row.querySelector('.ce-budget').value); c.budget=isNaN(b)?null:b; const l=parseNum(row.querySelector('.ce-limit').value); c.limit=isNaN(l)?null:l; guardOn=true; commit(); guardOn=false; };
@@ -823,6 +823,12 @@ async function ensureMyCode(){
   m.inviteCode=genCode(m.name); saveLocal(); await writeInvite(m); schedulePush();
 }
 
+async function generateCodeFor(m){
+  if(!syncCode){ toast('Este proyecto no está sincronizado; no se pueden generar códigos'); return; }
+  if(m.inviteCode){ shareInvite(m); return; }
+  m.inviteCode=genCode(m.name); commit();
+  const ok=await writeInvite(m); if(ok) shareInvite(m); else toast('No se ha podido crear el código (sin conexión)');
+}
 async function invite(){
   if(!syncCode){ toast('Este proyecto no está sincronizado; no se pueden enviar invitaciones'); return; }
   const n=prompt('Nombre de la persona a la que invitas:',''); if(!n||!n.trim()) return;
