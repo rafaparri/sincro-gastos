@@ -401,7 +401,13 @@ const mname=id=>member(id).name;
 const cat=id=>state.categories.find(c=>c.id===id)||{emoji:'❓',name:'Sin categoría'};
 const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=id=>document.getElementById(id);
-function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
+let toastQueue=[], toastBusy=false;
+function toast(msg){ toastQueue.push(msg); processToastQueue(); }
+function processToastQueue(){
+  if(toastBusy||!toastQueue.length) return; toastBusy=true;
+  const msg=toastQueue.shift(); const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>{ toastBusy=false; processToastQueue(); },250); },2200);
+}
 function avHtml(m,cls,extra){ m=typeof m==='string'?member(m):m; const a=m.avatar||{}; const inner=a.type==='photo'?`<img src="${a.value}" alt="">`:(a.type==='emoji'?a.value:esc((m.name||'?')[0].toUpperCase())); return `<span class="av ${cls||''}" ${extra||''} style="background:${a.type==='photo'?'#fff':m.color}">${inner}</span>`; }
 const nameHtml=id=>`<span class="name" style="color:${member(id).color}">${esc(mname(id))}</span>`;
 function groupById(id){ return state.groups.find(g=>g.id===id)||null; }
@@ -922,10 +928,29 @@ async function getPhoto(id){
   if(photoCache[id]) return photoCache[id]; const l=localStorage.getItem('encomun_photo_'+id); if(l){ photoCache[id]=l; return l; } if(!syncCode) return null;
   try{ const s=await photoRef(id).get(); if(s.exists){ const d=s.data().data; photoCache[id]=d; try{localStorage.setItem('encomun_photo_'+id,d);}catch(e){} return d; } }catch(e){} return null;
 }
+function notifyRemoteChanges(oldExpenses,newExpenses,newMembers){
+  const nameOf=id=>{ const m=newMembers.find(x=>x.id===id); return m?m.name:'Alguien'; };
+  const oldById={}; oldExpenses.forEach(e=>oldById[e.id]=e);
+  const changes=[];
+  newExpenses.forEach(e=>{
+    const prev=oldById[e.id];
+    if(!prev) changes.push({e,kind:'added'});
+    else if((prev.updatedAt||0)!==(e.updatedAt||0)) changes.push({e,kind:'edited'});
+  });
+  if(!changes.length) return;
+  if(changes.length>3){ toast(`${changes.length} movimientos actualizados`); return; }
+  changes.forEach(({e,kind})=>{
+    const who=nameOf(e.payerId); const verb=kind==='added'?'añadió':'editó';
+    const what=e.type==='transfer'?`un pago de ${fmt(e.amount)}`:`${e.concept||'un gasto'} · ${fmt(e.amount)}`;
+    toast(`${who} ${verb}: ${what}`);
+  });
+}
 function applyRemote(remote){
   if(!remote||!remote.members) return;
   if(remote.updatedAt&&state.updatedAt&&remote.updatedAt<=state.updatedAt) return;
+  const prevExpenses=state.expenses||[];
   applyingRemote=true; state=migrate(JSON.parse(JSON.stringify(remote))); delete state.app; if(!state.members.find(m=>m.id===me)) me=(state.members[0]||{}).id||null; saveLocal(); render(); applyingRemote=false;
+  notifyRemoteChanges(prevExpenses,state.expenses,state.members);
 }
 async function startSync(){
   if(!syncCode){ syncStatus='off'; render(); return; }
