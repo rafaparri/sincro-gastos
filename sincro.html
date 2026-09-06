@@ -704,7 +704,7 @@ function treeMonthHtml(mm){
   const closed=isMonthClosed(mm); const sc='m:'+mm; const label=ymLabel(mm).replace(/^\w/,c=>c.toUpperCase());
   const kids=groupsUnderMonth(mm); const exp=!!treeExpanded[mm];
   let html=`<div class="tree-row ${closed?'closed':''}">
-    <button class="tree-toggle" data-toggle="${mm}">${kids.length?(exp?'▾':'▸'):'·'}</button>
+    <button class="tree-toggle" data-toggle="${mm}">${exp?'▾':'▸'}</button>
     <button class="tree-name" data-scope="${sc}">${closed?'🔒 ':'🗓️ '}${label}${currentScope===sc?' <span class="muted small">(aquí)</span>':''}</button>
     <button class="tree-more" data-more="${sc}">⋯</button>
   </div>`;
@@ -735,7 +735,7 @@ function openGroupsSheet(){
     html+=`<div class="form-actions" style="margin-top:18px"><button class="btn ghost block" id="gSheetClose">Cerrar</button></div>`;
     sh.innerHTML=html;
     $('allProjectsRow').onclick=()=>{ setCurrentScope(null); closeSheet(); };
-    sh.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); const mm=b.dataset.toggle; if(!groupsUnderMonth(mm).length) return; treeExpanded[mm]=!treeExpanded[mm]; draw(); });
+    sh.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); const mm=b.dataset.toggle; treeExpanded[mm]=!treeExpanded[mm]; draw(); });
     sh.querySelectorAll('[data-scope]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); setCurrentScope(b.dataset.scope||null); closeSheet(); });
     sh.querySelectorAll('[data-addfolder]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); const mm=b.dataset.addfolder; const n=prompt('Nombre de la carpeta (por ejemplo, un viaje):',''); if(!n||!n.trim()) return; state.groups.push({id:'g'+uid(),name:n.trim(),parentId:'m:'+mm,closed:false,closedAt:null,closedSummary:null}); treeExpanded[mm]=true; commit(); draw(); });
     sh.querySelectorAll('[data-more]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); openScopeActions(b.dataset.more,draw); });
