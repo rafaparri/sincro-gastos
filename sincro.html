@@ -106,6 +106,7 @@
   .empty{padding:24px 0;color:var(--ink-2)}
   .month-head{display:flex;justify-content:space-between;align-items:baseline;padding:18px 0 6px;border-bottom:2px solid var(--ink);margin-top:10px}
   .month-body{display:flex;flex-direction:column;gap:10px;padding-top:10px}
+  .day-head{font-weight:700;font-size:1rem;color:var(--ink);margin-top:4px}
   .month-head h3{font-size:1.15rem;text-transform:capitalize}
 
   .field{margin-bottom:18px} .field label{display:block;font-weight:700;margin-bottom:6px}
@@ -540,9 +541,9 @@ function renderHome(){
 function accBadge(e){ const am=accountMonthOf(e); return am!==ym(e.date) ? ` · <span style="color:var(--blue)">cuenta en ${ymLabel(am)}</span>` : ''; }
 function folderBadge(e){ if(!e.groupId) return ''; const g=groupById(e.groupId); return g?` · <span class="pill" style="padding:1px 8px;font-size:.72rem">📌 ${esc(g.name)}</span>`:''; }
 function rowHtml(e){
-  if(e.type==='transfer') return `<button class="row" data-id="${e.id}"><span class="emoji" style="--cb:#d1fae5">💸</span><span><span class="t">${esc(mname(e.payerId))} pagó a ${esc(mname(e.toId))}</span><br><span class="s">${dateLabel(e.date)}${accBadge(e)}${e.note?' · '+esc(e.note):''}</span></span><span class="amt">${fmt(e.amount)}<small>pago</small></span></button>`;
+  if(e.type==='transfer') return `<button class="row" data-id="${e.id}"><span class="emoji" style="--cb:#d1fae5">💸</span><span><span class="t">${esc(mname(e.payerId))} pagó a ${esc(mname(e.toId))}</span><br><span class="s">Pago${accBadge(e)}${e.note?' · '+esc(e.note):''}</span></span><span class="amt">${fmt(e.amount)}<small>pago</small></span></button>`;
   const c=cat(e.catId);
-  return `<button class="row" data-id="${e.id}"><span class="emoji" style="--cb:${catBg(e.catId)}">${c.emoji}</span><span><span class="t">${esc(e.concept||c.name)}${folderBadge(e)}</span><br><span class="s">${dateLabel(e.date)} · ${esc(c.name)} · pagó ${nameHtml(e.payerId)}${accBadge(e)}${e.photoId?' · 📷':''}</span></span><span class="amt">${fmt(e.amount)}<small>${splitLabel(e)}</small></span></button>`;
+  return `<button class="row" data-id="${e.id}"><span class="emoji" style="--cb:${catBg(e.catId)}">${c.emoji}</span><span><span class="t">${esc(e.concept||c.name)}${folderBadge(e)}</span><br><span class="s">${esc(c.name)} · pagó ${nameHtml(e.payerId)}${accBadge(e)}${e.photoId?' · 📷':''}</span></span><span class="amt">${fmt(e.amount)}<small>${splitLabel(e)}</small></span></button>`;
 }
 function splitLabel(e){ const mode=(e.split&&e.split.mode)||'equal'; if(mode==='custom') return 'importes'; const p=participants(e); if(mode==='equal'||p.length===state.members.length) return state.members.length===2?'a medias':'entre todos'; if(p.length===1) return 'solo '+mname(p[0]); return 'entre '+p.length; }
 function bindRows(root){ root.querySelectorAll('.row').forEach(r=>r.onclick=()=>openDetail(r.dataset.id)); }
@@ -562,7 +563,10 @@ function renderList(){
   for(const e of list){ const m=ym(e.date); if(!byMonth[m]){ byMonth[m]=[]; order.push(m); } byMonth[m].push(e); }
   let html='';
   order.forEach((m,i)=>{ const rows=byMonth[m]; const t=totalOf(rows.filter(x=>x.type!=='transfer')); const open=i===0;
-    html+=`<button class="month-head" data-m="${m}" style="width:100%;background:none;cursor:pointer;text-align:left"><h3>${open?'▾':'▸'} ${ymLabel(m).replace(/^\w/,c=>c.toUpperCase())}${isMonthClosed(m)?' 🔒':''}</h3><span class="muted">${fmt(t)}</span></button><div class="month-body ${open?'':'hide'}">${rows.map(rowHtml).join('')}</div>`;
+    const dayOrder=[]; const byDay={};
+    rows.forEach(e=>{ if(!byDay[e.date]){ byDay[e.date]=[]; dayOrder.push(e.date); } byDay[e.date].push(e); });
+    const daysHtml=dayOrder.map(d=>`<div class="day-head">${dateLabel(d)}</div>`+byDay[d].map(rowHtml).join('')).join('');
+    html+=`<button class="month-head" data-m="${m}" style="width:100%;background:none;cursor:pointer;text-align:left"><h3>${open?'▾':'▸'} ${ymLabel(m).replace(/^\w/,c=>c.toUpperCase())}${isMonthClosed(m)?' 🔒':''}</h3><span class="muted">${fmt(t)}</span></button><div class="month-body ${open?'':'hide'}">${daysHtml}</div>`;
   });
   $('fullList').innerHTML=html; bindRows($('fullList'));
   $('fullList').querySelectorAll('.month-head').forEach(h=>h.onclick=()=>{ const body=h.nextElementSibling; const willOpen=body.classList.contains('hide'); body.classList.toggle('hide'); const hh=h.querySelector('h3'); hh.textContent=(willOpen?'▾ ':'▸ ')+hh.textContent.replace(/^[▾▸]\s/,''); });
