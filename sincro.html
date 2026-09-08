@@ -541,9 +541,10 @@ function renderHome(){
 function accBadge(e){ const am=accountMonthOf(e); return am!==ym(e.date) ? ` · <span style="color:var(--blue)">cuenta en ${ymLabel(am)}</span>` : ''; }
 function folderBadge(e){ if(!e.groupId) return ''; const g=groupById(e.groupId); return g?` · <span class="pill" style="padding:1px 8px;font-size:.72rem">📌 ${esc(g.name)}</span>`:''; }
 function rowHtml(e){
-  if(e.type==='transfer') return `<button class="row" data-id="${e.id}"><span class="emoji" style="--cb:#d1fae5">💸</span><span><span class="t">${esc(mname(e.payerId))} pagó a ${esc(mname(e.toId))}</span><br><span class="s">Pago${accBadge(e)}${e.note?' · '+esc(e.note):''}</span></span><span class="amt">${fmt(e.amount)}<small>pago</small></span></button>`;
+  const pc=member(e.payerId).color;
+  if(e.type==='transfer') return `<button class="row" data-id="${e.id}" style="border-left:4px solid ${pc}"><span class="emoji" style="--cb:#d1fae5">💸</span><span><span class="t">${esc(mname(e.payerId))} pagó a ${esc(mname(e.toId))}</span><br><span class="s">Pago${accBadge(e)}${e.note?' · '+esc(e.note):''}</span></span><span class="amt">${fmt(e.amount)}<small>pago</small></span></button>`;
   const c=cat(e.catId);
-  return `<button class="row" data-id="${e.id}"><span class="emoji" style="--cb:${catBg(e.catId)}">${c.emoji}</span><span><span class="t">${esc(e.concept||c.name)}${folderBadge(e)}</span><br><span class="s">${esc(c.name)} · pagó ${nameHtml(e.payerId)}${accBadge(e)}${e.photoId?' · 📷':''}</span></span><span class="amt">${fmt(e.amount)}<small>${splitLabel(e)}</small></span></button>`;
+  return `<button class="row" data-id="${e.id}" style="border-left:4px solid ${pc}"><span class="emoji" style="--cb:${catBg(e.catId)}">${c.emoji}</span><span><span class="t">${esc(e.concept||c.name)}${folderBadge(e)}</span><br><span class="s">${esc(c.name)} · pagó ${nameHtml(e.payerId)}${accBadge(e)}${e.photoId?' · 📷':''}</span></span><span class="amt">${fmt(e.amount)}<small>${splitLabel(e)}</small></span></button>`;
 }
 function splitLabel(e){ const mode=(e.split&&e.split.mode)||'equal'; if(mode==='custom') return 'importes'; const p=participants(e); if(mode==='equal'||p.length===state.members.length) return state.members.length===2?'a medias':'entre todos'; if(p.length===1) return 'solo '+mname(p[0]); return 'entre '+p.length; }
 function bindRows(root){ root.querySelectorAll('.row').forEach(r=>r.onclick=()=>openDetail(r.dataset.id)); }
