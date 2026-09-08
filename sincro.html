@@ -230,7 +230,7 @@
 
   <main>
     <section class="view active" id="v-inicio">
-      <div class="hero-card"><h2>Saldo del grupo</h2><div class="people" id="people"></div><div class="settle" id="settle"></div></div>
+      <div class="hero-card"><h2>Saldo del grupo</h2><div id="heroScope" style="color:#fff;font-weight:700;font-size:1.05rem;margin:-4px 0 12px"></div><div class="people" id="people"></div><div class="settle" id="settle"></div></div>
       <div class="alerts" id="alerts"></div>
       <div id="monthTitle" class="hide"></div><div id="monthTotal" class="hide"></div><div id="folderExcludeHome" class="hide"></div><div id="monthBudgetBar" class="hide"></div><div id="recentList" class="hide"></div>
       <div class="block" style="margin-top:6px">
@@ -521,7 +521,9 @@ function showView(v){
 
 function renderHome(){
   const b=balances();
-  $('people').innerHTML=state.members.map(m=>{ const v=b[m.id]||0; const cls=v>0.004?'pos':v<-0.004?'neg':''; const st=v>0.004?'le deben':v<-0.004?'debe':'en paz'; return `<div class="person">${avHtml(m,'lg')}<div><div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}</div><div class="st">${st}</div></div><div class="bal ${cls}">${cls?fmt(Math.abs(v)):'✓'}</div></div>`; }).join('');
+  $('heroScope').textContent=scopeLabel(currentScope);
+  $('people').innerHTML=state.members.map(m=>{ const v=b[m.id]||0; const cls=v>0.004?'pos':v<-0.004?'neg':''; const st=v>0.004?'le deben':v<-0.004?'debe':'en paz'; return `<div class="person"><button class="av-btn" data-m="${m.id}" style="border:0;background:none;padding:0">${avHtml(m,'lg')}</button><div><div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}</div><div class="st">${st}</div></div><div class="bal ${cls}">${cls?fmt(Math.abs(v)):'✓'}</div></div>`; }).join('');
+  $('people').querySelectorAll('.av-btn').forEach(b=>b.onclick=()=>{ const m=state.members.find(x=>x.id===b.dataset.m); if(m) openMemberSheet(m); });
   const st=settlements(b); const sb=$('settle');
   if(!st.length) sb.innerHTML=`<p class="even">Estáis en paz</p><p class="muted">Nadie debe nada a nadie.</p>`;
   else sb.innerHTML=`<h3>Para quedar en paz</h3>`+st.map((d,i)=>`<div class="debt">${avHtml(d.from)}<div class="txt">${nameHtml(d.from)} paga <b>${fmt(d.amount)}</b> a ${nameHtml(d.to)}</div><button class="btn sm" data-i="${i}">Registrar pago</button></div>`).join('')+`<button class="btn primary block" id="settleAllBtn" style="margin-top:12px">✓ Marcar deuda saldada</button>`;
