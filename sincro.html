@@ -429,6 +429,19 @@ function folderExcludeChipsHtml(){
 function bindFolderExcludeChips(root){
   root.querySelectorAll('[data-fx]').forEach(b=>b.onclick=()=>{ const id=b.dataset.fx; if(excludedFolders.has(id)) excludedFolders.delete(id); else excludedFolders.add(id); render(); });
 }
+function settleScopeOneTap(st){
+  if(!st||!st.length){ toast('Ya está en paz'); return; }
+  const label=scopeLabel(currentScope);
+  if(!confirm(`Se van a registrar ${st.length} ${st.length===1?'pago':'pagos'} para dejar "${label}" saldado:\n\n`+st.map(d=>`${mname(d.from)} paga ${fmt(d.amount)} a ${mname(d.to)}`).join('\n')+'\n\n¿Confirmas?')) return;
+  const mm=(currentScope&&currentScope.startsWith('m:'))?currentScope.slice(2):ym(new Date());
+  const gid=(currentScope&&currentScope.startsWith('g:'))?currentScope.slice(2):null;
+  const now=Date.now();
+  st.forEach((d,i)=>{
+    state.expenses.push({ id:'set'+uid(), type:'transfer', amount:d.amount, concept:'', payerId:d.from, toId:d.to, catId:null, split:{mode:'equal'}, date:todayStr(), note:'Deuda saldada', photoId:null, groupId:gid, accountMonth:mm, createdAt:now+i, updatedAt:now+i });
+  });
+  commit();
+  toast(st.length===1?'Deuda saldada: '+fmt(st[0].amount):`Saldadas ${st.length} deudas`);
+}
 function closeMonthFlow(mm,after){
   const list=state.expenses.filter(e=>accountMonthOf(e)===mm);
   const b=computeBalancesFor(list); const st=settlements(b);
@@ -510,8 +523,9 @@ function renderHome(){
   $('people').innerHTML=state.members.map(m=>{ const v=b[m.id]||0; const cls=v>0.004?'pos':v<-0.004?'neg':''; const st=v>0.004?'le deben':v<-0.004?'debe':'en paz'; return `<div class="person">${avHtml(m,'lg')}<div><div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}</div><div class="st">${st}</div></div><div class="bal ${cls}">${cls?fmt(Math.abs(v)):'✓'}</div></div>`; }).join('');
   const st=settlements(b); const sb=$('settle');
   if(!st.length) sb.innerHTML=`<p class="even">Estáis en paz</p><p class="muted">Nadie debe nada a nadie.</p>`;
-  else sb.innerHTML=`<h3>Para quedar en paz</h3>`+st.map((d,i)=>`<div class="debt">${avHtml(d.from)}<div class="txt">${nameHtml(d.from)} paga <b>${fmt(d.amount)}</b> a ${nameHtml(d.to)}</div><button class="btn sm" data-i="${i}">Registrar pago</button></div>`).join('');
+  else sb.innerHTML=`<h3>Para quedar en paz</h3>`+st.map((d,i)=>`<div class="debt">${avHtml(d.from)}<div class="txt">${nameHtml(d.from)} paga <b>${fmt(d.amount)}</b> a ${nameHtml(d.to)}</div><button class="btn sm" data-i="${i}">Registrar pago</button></div>`).join('')+`<button class="btn primary block" id="settleAllBtn" style="margin-top:12px">✓ Marcar deuda saldada</button>`;
   sb.querySelectorAll('button[data-i]').forEach(btn=>btn.onclick=()=>{ const d=st[btn.dataset.i]; openForm(null,{type:'transfer',amount:d.amount,payerId:d.from,toId:d.to}); showView('add'); });
+  const sab=$('settleAllBtn'); if(sab) sab.onclick=()=>settleScopeOneTap(st);
   const scopeMonth=(currentScope&&currentScope.startsWith('m:'))?currentScope.slice(2):ym(new Date());
   const alerts=computeAlerts(scopeMonth);
   $('alerts').innerHTML=alerts.map(a=>`<div class="alert ${a.level}"><strong>${a.title}</strong>${a.text}</div>`).join('');
