@@ -457,6 +457,15 @@ function groupOptionsHtml(selected,mm){ let html=`<option value="">General (sin 
 function computeBalancesFor(list){ const b={}; state.members.forEach(m=>b[m.id]=0); for(const e of list){ if(e.type==='transfer'){ b[e.payerId]=(b[e.payerId]||0)+e.amount; b[e.toId]=(b[e.toId]||0)-e.amount; } else { b[e.payerId]=(b[e.payerId]||0)+e.amount; for(const m of state.members) b[m.id]-=shareOf(e,m.id); } } return b; }
 function slug(t){ return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
 function genCode(name){ return (slug(name)||'x')+'-'+Math.random().toString(36).slice(2,6); }
+async function uniqueInviteCode(name){
+  const db=ensureFirebase();
+  for(let i=0;i<6;i++){
+    const code=genCode(name);
+    if(!db) return code;
+    try{ const s=await col().doc(code).get(); if(!s.exists) return code; }catch(e){ return code; }
+  }
+  return (slug(name)||'x')+'-'+Date.now().toString(36).slice(-6);
+}
 
 function loadLocal(){ state=freshState(); try{ const s=JSON.parse(localStorage.getItem(stateKey())); if(s&&s.members) state=migrate(s); }catch(e){} me=localStorage.getItem(meKey())||null; if(!state.members.find(m=>m.id===me)) me=state.members[0]?state.members[0].id:null; const storedScope=localStorage.getItem(scopeKey()); currentScope=(storedScope===null)?('m:'+ym(new Date())):(storedScope||null); if(currentScope&&currentScope.startsWith('g:')&&!groupById(currentScope.slice(2))) currentScope='m:'+ym(new Date()); }
 function migrate(s){ s.projectName=s.projectName||'Sincro'; s.adminId=s.adminId||(s.members&&s.members[0]&&s.members[0].id)||null; s.settings=Object.assign({monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null},s.settings||{}); s.expenses=(s.expenses||[]).map(e=>Object.assign({groupId:null,accountMonth:null},e)); s.closedMonths=s.closedMonths||{}; s.categories=s.categories||JSON.parse(JSON.stringify(DEFAULT_CATS)); s.groups=(s.groups||[]).map(g=>(g.parentId&&g.parentId.startsWith('m:'))?g:Object.assign({},g,{parentId:'m:'+ym(new Date())})); s.members=(s.members||[]).map((m,i)=>Object.assign({color:COLORS[i%COLORS.length],avatar:{type:'emoji',value:AVATARS[i%AVATARS.length]},inviteCode:null,blocked:false},m)); return s; }
@@ -711,8 +720,8 @@ $('prevMonth').onclick=()=>{anaYm=shiftYm(anaYm,-1);renderAnalysis();}; $('nextM
 let guardOn=false;
 function renderSettings(){
   if(guardOn) return;
-  $('memberList').innerHTML=state.members.map(m=>`<div class="member-row" data-id="${m.id}">${avHtml(m)}<div><div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}</div><div class="s">${m.blocked?'🔒 bloqueada':m.inviteCode?'código: '+esc(m.inviteCode):(m.id===me?'este móvil':'sin código')}</div></div><div class="acts"><button class="btn ghost sm" data-a="edit">Editar</button>${m.inviteCode?`<button class="btn ghost sm" data-a="share">Enviar código</button>`:(m.id!==me&&!m.blocked?`<button class="btn ghost sm" data-a="gencode">Generar código</button>`:'')}</div></div>`).join('')||'<p class="empty">Todavía no hay nadie.</p>';
-  $('memberList').querySelectorAll('.member-row').forEach(row=>{ const m=state.members.find(x=>x.id===row.dataset.id); row.querySelector('[data-a=edit]').onclick=()=>openMemberSheet(m); const sh=row.querySelector('[data-a=share]'); if(sh) sh.onclick=()=>shareInvite(m); const gc=row.querySelector('[data-a=gencode]'); if(gc) gc.onclick=()=>generateCodeFor(m); });
+  $('memberList').innerHTML=state.members.map(m=>`<div class="member-row" data-id="${m.id}">${avHtml(m)}<div><div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}</div><div class="s">${m.blocked?'🔒 bloqueada':m.inviteCode?'código: '+esc(m.inviteCode):(m.id===me?'este móvil':'sin código')}</div></div><div class="acts"><button class="btn ghost sm" data-a="edit">Editar</button>${m.inviteCode?`<button class="btn ghost sm" data-a="share">Enviar código</button><button class="btn ghost sm" data-a="regen" title="Regenerar código">↻</button>`:(m.id!==me&&!m.blocked?`<button class="btn ghost sm" data-a="gencode">Generar código</button>`:'')}</div></div>`).join('')||'<p class="empty">Todavía no hay nadie.</p>';
+  $('memberList').querySelectorAll('.member-row').forEach(row=>{ const m=state.members.find(x=>x.id===row.dataset.id); row.querySelector('[data-a=edit]').onclick=()=>openMemberSheet(m); const sh=row.querySelector('[data-a=share]'); if(sh) sh.onclick=()=>shareInvite(m); const gc=row.querySelector('[data-a=gencode]'); if(gc) gc.onclick=()=>generateCodeFor(m); const rg=row.querySelector('[data-a=regen]'); if(rg) rg.onclick=()=>regenerateCodeFor(m); });
   $('catEditor').innerHTML=state.categories.map(c=>`<div class="cat-edit" data-id="${c.id}"><input class="input ce-emoji" value="${esc(c.emoji)}" maxlength="4"><input class="input ce-name" value="${esc(c.name)}"><input class="input ce-budget" inputmode="decimal" value="${c.budget!=null?fmtN(c.budget):''}" placeholder="—"><input class="input ce-limit" inputmode="decimal" value="${c.limit!=null?fmtN(c.limit):''}" placeholder="—"><button class="x" title="Eliminar categoría">×</button></div>`).join('');
   $('catEditor').querySelectorAll('.cat-edit').forEach(row=>{ const c=state.categories.find(x=>x.id===row.dataset.id);
     const upd=()=>{ c.emoji=row.querySelector('.ce-emoji').value.trim()||'📦'; c.name=row.querySelector('.ce-name').value.trim()||c.name; const b=parseNum(row.querySelector('.ce-budget').value); c.budget=isNaN(b)?null:b; const l=parseNum(row.querySelector('.ce-limit').value); c.limit=isNaN(l)?null:l; guardOn=true; commit(); guardOn=false; };
@@ -841,19 +850,27 @@ function closeGroupFlow(g,after){
 }
 async function ensureMyCode(){
   if(!syncCode) return; const m=state.members.find(x=>x.id===me); if(!m||m.inviteCode) return;
-  m.inviteCode=genCode(m.name); saveLocal(); await writeInvite(m); schedulePush();
+  m.inviteCode=await uniqueInviteCode(m.name); saveLocal(); await writeInvite(m); schedulePush();
 }
 
 async function generateCodeFor(m){
   if(!syncCode){ toast('Este proyecto no está sincronizado; no se pueden generar códigos'); return; }
   if(m.inviteCode){ shareInvite(m); return; }
-  m.inviteCode=genCode(m.name); commit();
+  m.inviteCode=await uniqueInviteCode(m.name); commit();
   const ok=await writeInvite(m); if(ok) shareInvite(m); else toast('No se ha podido crear el código (sin conexión)');
+}
+async function regenerateCodeFor(m){
+  if(!syncCode){ toast('Este proyecto no está sincronizado'); return; }
+  if(!confirm(`Se creará un código nuevo para ${m.name} y el anterior (${m.inviteCode}) dejará de funcionar. ¿Continuar?`)) return;
+  const oldCode=m.inviteCode;
+  m.inviteCode=await uniqueInviteCode(m.name); commit();
+  if(oldCode) deleteInvite(oldCode);
+  const ok=await writeInvite(m); if(ok){ toast('Código nuevo generado'); shareInvite(m); } else toast('No se ha podido guardar (sin conexión)');
 }
 async function invite(){
   if(!syncCode){ toast('Este proyecto no está sincronizado; no se pueden enviar invitaciones'); return; }
   const n=prompt('Nombre de la persona a la que invitas:',''); if(!n||!n.trim()) return;
-  const m=newMember(n.trim(),state.members.length); m.inviteCode=genCode(n.trim());
+  const m=newMember(n.trim(),state.members.length); m.inviteCode=await uniqueInviteCode(n.trim());
   state.members.push(m); commit();
   const ok=await writeInvite(m); if(ok) shareInvite(m); else toast('No se ha podido crear la invitación (sin conexión)');
 }
