@@ -167,9 +167,14 @@
   @media (max-width:520px){ .cat-edit,.cat-head{grid-template-columns:48px 1fr 78px 78px 36px} }
   .inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap} .inline .input{width:auto;flex:1;min-width:120px}
   code{background:var(--soft);padding:2px 6px;border-radius:6px;font-size:.95em}
-  .member-row{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
-  .member-row .n{font-weight:700} .member-row .s{font-size:.85rem;color:var(--ink-2);word-break:break-all}
-  .member-row .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .member-row{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:16px;margin-bottom:10px}
+  .member-row .top{display:flex;align-items:center;gap:12px}
+  .member-row .n{font-weight:700;font-size:1.05rem}
+  .member-row .code{display:flex;align-items:center;gap:8px;background:var(--soft);border-radius:10px;padding:8px 10px;overflow-x:auto}
+  .member-row .code code{background:none;padding:0;white-space:nowrap;font-size:.95rem}
+  .member-row .acts{display:flex;gap:8px;flex-wrap:wrap}
+  .member-row .acts .btn{flex:1;min-width:0}
+  .member-row .acts .btn.icon{flex:0 0 auto;min-height:42px;padding:0 14px}
   .avgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px;margin-top:10px}
   .avgrid button{border:2px solid var(--line);background:#fff;border-radius:50%;width:64px;height:64px;padding:0;display:flex;align-items:center;justify-content:center}
   .avgrid button.on{border-color:var(--ink);box-shadow:0 0 0 3px var(--ink)}
@@ -720,7 +725,14 @@ $('prevMonth').onclick=()=>{anaYm=shiftYm(anaYm,-1);renderAnalysis();}; $('nextM
 let guardOn=false;
 function renderSettings(){
   if(guardOn) return;
-  $('memberList').innerHTML=state.members.map(m=>`<div class="member-row" data-id="${m.id}">${avHtml(m)}<div><div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}</div><div class="s">${m.blocked?'🔒 bloqueada':m.inviteCode?'código: '+esc(m.inviteCode):(m.id===me?'este móvil':'sin código')}</div></div><div class="acts"><button class="btn ghost sm" data-a="edit">Editar</button>${m.inviteCode?`<button class="btn ghost sm" data-a="share">Enviar código</button><button class="btn ghost sm" data-a="regen" title="Regenerar código">↻</button>`:(m.id!==me&&!m.blocked?`<button class="btn ghost sm" data-a="gencode">Generar código</button>`:'')}</div></div>`).join('')||'<p class="empty">Todavía no hay nadie.</p>';
+  $('memberList').innerHTML=state.members.map(m=>`<div class="member-row" data-id="${m.id}">
+    <div class="top">${avHtml(m)}<div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}${m.blocked?' <span class="small" style="color:var(--bad)">· bloqueada</span>':''}</div></div>
+    ${m.inviteCode?`<div class="code">🔑 <code>${esc(m.inviteCode)}</code></div>`:!m.blocked?`<div class="s muted small">Sin código todavía</div>`:''}
+    <div class="acts">
+      <button class="btn ghost sm" data-a="edit">Editar</button>
+      ${m.inviteCode?`<button class="btn ghost sm" data-a="share">Enviar código</button><button class="btn ghost sm icon" data-a="regen" title="Regenerar código">↻</button>`:(m.id!==me&&!m.blocked?`<button class="btn ghost sm" data-a="gencode">Generar código</button>`:'')}
+    </div>
+  </div>`).join('')||'<p class="empty">Todavía no hay nadie.</p>';
   $('memberList').querySelectorAll('.member-row').forEach(row=>{ const m=state.members.find(x=>x.id===row.dataset.id); row.querySelector('[data-a=edit]').onclick=()=>openMemberSheet(m); const sh=row.querySelector('[data-a=share]'); if(sh) sh.onclick=()=>shareInvite(m); const gc=row.querySelector('[data-a=gencode]'); if(gc) gc.onclick=()=>generateCodeFor(m); const rg=row.querySelector('[data-a=regen]'); if(rg) rg.onclick=()=>regenerateCodeFor(m); });
   $('catEditor').innerHTML=state.categories.map(c=>`<div class="cat-edit" data-id="${c.id}"><input class="input ce-emoji" value="${esc(c.emoji)}" maxlength="4"><input class="input ce-name" value="${esc(c.name)}"><input class="input ce-budget" inputmode="decimal" value="${c.budget!=null?fmtN(c.budget):''}" placeholder="—"><input class="input ce-limit" inputmode="decimal" value="${c.limit!=null?fmtN(c.limit):''}" placeholder="—"><button class="x" title="Eliminar categoría">×</button></div>`).join('');
   $('catEditor').querySelectorAll('.cat-edit').forEach(row=>{ const c=state.categories.find(x=>x.id===row.dataset.id);
