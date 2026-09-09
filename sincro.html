@@ -12,7 +12,7 @@
 <meta name="color-scheme" content="light only">
 <title>Sincro · Gastos compartidos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -21,12 +21,12 @@
     --bg:#ffffff; --ink:#111827; --ink-2:#4b5563; --line:#e5e7eb; --soft:#f3f4f6;
     --blue:#2563EB; --violet:#8B5CF6; --cyan:#06B6D4; --green:#10B981;
     --ok:#15803d; --warn:#b45309; --bad:#b91c1c;
-    --fs-base:19px; --radius:16px; --tabbar:78px;
+    --fs-base:17px; --radius:16px; --tabbar:78px;
   }
   .logo{width:34px;height:34px;flex-shrink:0}
   .logo.big{width:84px;height:84px}
   .card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 2px 10px rgba(17,24,39,.06)}
-  .hero-card{background:#0f172a;color:#fff;border-radius:22px;padding:18px 18px 8px;margin-top:4px}
+  .hero-card{background:#0f172a;color:#fff;border-radius:22px;padding:16px 16px 6px;margin-top:2px}
   .hero-card h2{color:#94a3b8;font-size:.8rem;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
   .hero-card .person{border-bottom-color:rgba(255,255,255,.12)}
   .hero-card .person .n{color:#fff !important}
@@ -50,7 +50,7 @@
   .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--soft);font-size:.85rem;font-weight:700}
   *{box-sizing:border-box}
   html{font-size:var(--fs-base);color-scheme:light only;background:#fff !important}
-  body{margin:0;background:#fff !important;color:#14202b !important;font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.4;-webkit-font-smoothing:antialiased;padding-bottom:calc(var(--tabbar) + env(safe-area-inset-bottom))}
+  body{margin:0;background:#fff !important;color:#14202b !important;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.35;-webkit-font-smoothing:antialiased;padding-bottom:calc(var(--tabbar) + env(safe-area-inset-bottom))}
   #setup,#app,.sheet,main{background:#fff;color:#14202b}
   h1,h2,h3{margin:0;font-weight:700;line-height:1.15}
   h1{font-size:1.5rem} h2{font-size:1.25rem} h3{font-size:1.05rem}
@@ -64,7 +64,7 @@
   .sync .dot{width:12px;height:12px;border-radius:50%;background:var(--line)}
   .sync.on .dot{background:var(--ok)} .sync.connecting .dot{background:var(--warn)} .sync.error .dot{background:var(--bad)}
 
-  main{padding:18px 18px 24px;max-width:720px;margin:0 auto}
+  main{padding:14px 16px 20px;max-width:720px;margin:0 auto}
   section.view{display:none} section.view.active{display:block}
 
   .av{width:44px;height:44px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:1.5rem;line-height:1;overflow:hidden;flex-shrink:0;color:#fff;font-weight:700}
@@ -95,7 +95,7 @@
   .alert{border-left:6px solid var(--warn);background:#fff6ec;padding:12px 14px;border-radius:0 var(--radius) var(--radius) 0}
   .alert.bad{border-left-color:var(--bad);background:#fdecea} .alert strong{display:block}
 
-  .block{margin-top:26px}
+  .block{margin-top:18px}
   .block-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
   .list{display:flex;flex-direction:column;gap:10px}
   .row{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff;text-align:left;width:100%;color:inherit}
@@ -109,7 +109,7 @@
   .day-head{font-weight:700;font-size:1rem;color:var(--ink);margin-top:4px}
   .month-head h3{font-size:1.15rem;text-transform:capitalize}
 
-  .field{margin-bottom:18px} .field label{display:block;font-weight:700;margin-bottom:6px}
+  .field{margin-bottom:12px} .field label{display:block;font-weight:700;margin-bottom:4px}
   .field .help{font-size:.85rem;color:var(--ink-2);margin-top:4px}
   .input{width:100%;min-height:54px;padding:10px 14px;border:2px solid var(--line);border-radius:var(--radius);background:#fff;font-size:1.1rem}
   .input:focus{border-color:var(--ink)} textarea.input{min-height:90px;resize:vertical}
@@ -148,7 +148,7 @@
   .period{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
   .period h2{text-align:center;flex:1;text-transform:capitalize} .period .btn{min-width:56px;padding:0}
 
-  .set-block{margin-top:26px;padding-top:18px;border-top:2px solid var(--ink)} .set-block h2{margin-bottom:12px}
+  .set-block{margin-top:18px;padding-top:14px;border-top:2px solid var(--ink)} .set-block h2{margin-bottom:8px}
   .scope-pill{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:var(--soft);font-weight:700;border:0;font-size:.95rem;margin-bottom:14px;max-width:100%}
   .scope-pill span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tree-row{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid var(--line);background:none;border-left:0;border-right:0;border-top:0;width:100%}
@@ -175,8 +175,8 @@
   .member-row .acts{display:flex;gap:8px;flex-wrap:wrap}
   .member-row .acts .btn{flex:1;min-width:0}
   .member-row .acts .btn.icon{flex:0 0 auto;min-height:42px;padding:0 14px}
-  .avgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px;margin-top:10px}
-  .avgrid button{border:2px solid var(--line);background:#fff;border-radius:50%;width:64px;height:64px;padding:0;display:flex;align-items:center;justify-content:center}
+  .avgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px;margin-top:8px}
+  .avgrid button{border:2px solid var(--line);background:#fff;border-radius:50%;width:52px;height:52px;padding:0;display:flex;align-items:center;justify-content:center;font-size:1.5rem}
   .avgrid button.on{border-color:var(--ink);box-shadow:0 0 0 3px var(--ink)}
   .colors{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
   .colors button{width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--line)}
@@ -707,12 +707,12 @@ function renderAnalysis(){
 function monthsRange(n,end){ const out=[]; for(let i=n-1;i>=0;i--) out.push(shiftYm(end,-i)); return out; }
 function drawCharts(y,totals){
   if(typeof Chart==='undefined') return; const months=monthsRange(12,y);
-  Chart.defaults.font={family:'Atkinson Hyperlegible',size:14}; Chart.defaults.color='#4b5563';
+  Chart.defaults.font={family:'Inter',size:14}; Chart.defaults.color='#4b5563';
   const short=m=>{const [yy,mm]=m.split('-');return new Date(yy,mm-1,1).toLocaleDateString('es-ES',{month:'short'})+(mm==='01'?" '"+yy.slice(2):'');};
   mk('chMonths',{type:'bar',data:{labels:months.map(short),datasets:[{label:'Total',data:months.map(m=>totalOf(expensesOf(m))),backgroundColor:months.map(m=>m===y?'#2563EB':'#c7d2fe'),borderRadius:6}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)}}},scales:{y:{ticks:{callback:v=>v+' €'}}}}});
   const cs=state.categories.filter(c=>totals[c.id]);
   const tot=cs.reduce((a,c)=>a+totals[c.id],0);
-  const centerText={id:'centerText',afterDraw(ch){ const {ctx,chartArea:{left,right,top,bottom}}=ch; const x=(left+right)/2,y=(top+bottom)/2; ctx.save(); ctx.textAlign='center'; ctx.fillStyle='#4b5563'; ctx.font='700 14px Atkinson Hyperlegible'; ctx.fillText('Total del mes',x,y-12); ctx.fillStyle='#111827'; ctx.font='700 22px Atkinson Hyperlegible'; ctx.fillText(fmt(tot),x,y+14); ctx.restore(); }};
+  const centerText={id:'centerText',afterDraw(ch){ const {ctx,chartArea:{left,right,top,bottom}}=ch; const x=(left+right)/2,y=(top+bottom)/2; ctx.save(); ctx.textAlign='center'; ctx.fillStyle='#4b5563'; ctx.font='700 14px Inter'; ctx.fillText('Total del mes',x,y-12); ctx.fillStyle='#111827'; ctx.font='700 22px Inter'; ctx.fillText(fmt(tot),x,y+14); ctx.restore(); }};
   mk('chCats',{type:'doughnut',data:{labels:cs.map(c=>c.emoji+' '+c.name+' · '+(tot?Math.round(totals[c.id]/tot*100):0)+' %'),datasets:[{data:cs.map(c=>totals[c.id]),backgroundColor:cs.map((c,i)=>COLORS[i%COLORS.length]),borderWidth:3,borderColor:'#fff'}]},options:{cutout:'62%',plugins:{legend:{position:'bottom',labels:{padding:14,usePointStyle:true}},tooltip:{callbacks:{label:c=>fmt(c.raw)}}}},plugins:[centerText]});
   const sel=$('anaCatSel'); if(sel.options.length!==state.categories.length+1){ sel.innerHTML=`<option value="all">🗂️ Todas</option>`+state.categories.map(c=>`<option value="${c.id}">${c.emoji} ${esc(c.name)}</option>`).join(''); }
   const cid=sel.value||'all'; sel.onchange=()=>drawCharts(y,totals);
