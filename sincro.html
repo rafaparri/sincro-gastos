@@ -11,6 +11,8 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="color-scheme" content="light only">
 <title>Sincro · Gastos compartidos</title>
+<script>window.SINCRO_VERSION='20261015174118';</script>
+<script src="update.js?v=20261015174118"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -151,15 +153,17 @@
   .set-block{margin-top:18px;padding-top:14px;border-top:2px solid var(--ink)} .set-block h2{margin-bottom:8px}
   .scope-pill{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:var(--soft);font-weight:700;border:0;font-size:.95rem;margin-bottom:14px;max-width:100%}
   .scope-pill span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .tree-row{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid var(--line);background:none;border-left:0;border-right:0;border-top:0;width:100%}
+  .tree-row{display:flex;align-items:center;gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:#fff;width:100%;margin-bottom:8px;box-shadow:0 1px 3px rgba(17,24,39,.04)}
   .tree-row.closed .tree-name{color:var(--ink-2)}
-  .tree-row.child{padding-left:6px;border-bottom:none;padding-top:6px;padding-bottom:6px}
+  .tree-row.archived{opacity:.72}
+  .tree-row.active{background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.35)}
+  .tree-row.child{padding:9px 12px;margin-bottom:6px;margin-left:10px;box-shadow:none}
   .tree-toggle{width:26px;height:26px;flex-shrink:0;border:0;background:none;font-size:1.1rem;font-weight:700;color:var(--ink-2)}
-  .tree-name{flex:1;text-align:left;border:0;background:none;font-size:1.05rem;font-weight:700;color:var(--ink);padding:6px 0}
+  .tree-name{flex:1;text-align:left;border:0;background:none;font-size:1.05rem;font-weight:700;color:var(--ink);padding:0}
   .tree-more{border:0;background:none;font-size:1.3rem;color:var(--ink-2);width:32px;height:32px;flex-shrink:0}
-  .tree-guide{width:26px;flex-shrink:0;text-align:center;color:var(--line);font-family:monospace}
-  .tree-children{padding-left:8px}
-  .tree-add{border:0;background:none;color:var(--blue);font-weight:700;text-align:left;padding:6px 0;flex:1}
+  .tree-guide{width:20px;flex-shrink:0;text-align:center;color:var(--line);font-family:monospace}
+  .tree-children{padding-left:2px;margin-top:-2px}
+  .tree-add{border:0;background:none;color:var(--blue);font-weight:700;text-align:left;padding:0;flex:1}
   .cat-edit{display:grid;grid-template-columns:56px 1fr 100px 100px 44px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
   .cat-edit .input{min-height:46px;padding:6px 10px;font-size:1rem}
   .cat-edit .x{border:0;background:none;font-size:1.4rem;color:var(--bad);min-height:44px}
@@ -380,7 +384,7 @@ const CAT_BG=['#fce7f3','#dcfce7','#dbeafe','#fef3c7','#ede9fe','#ffe4e6','#cffa
 function catBg(id){ const i=state.categories.findIndex(c=>c.id===id); return CAT_BG[(i<0?7:i)%CAT_BG.length]; }
 const AVATARS=['🦊','🐼','🦁','🐯','🐸','🐙','🦉','🐺','🦄','🐲','🐧','🐨','🐻','🦝','🐬','🦩','🐝','🦖','🐢','🦜','🐹','🦔','🐳','🦋'];
 
-function freshState(){ return { projectName:'Sincro', adminId:null, members:[], categories:JSON.parse(JSON.stringify(DEFAULT_CATS)), expenses:[], groups:[], closedMonths:{}, settings:{monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null}, updatedAt:0 }; }
+function freshState(){ return { projectName:'Sincro', adminId:null, members:[], categories:JSON.parse(JSON.stringify(DEFAULT_CATS)), expenses:[], groups:[], closedMonths:{}, archivedMonths:{}, settings:{monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null}, updatedAt:0 }; }
 function newMember(name,i){ return {id:'m'+uid(),name,color:COLORS[i%COLORS.length],avatar:{type:'emoji',value:AVATARS[i%AVATARS.length]},inviteCode:null}; }
 
 let state=freshState(), me=null, syncCode=localStorage.getItem(LS_CODE)||'', view='inicio', anaYm=ym(new Date()), form=null, charts={}, currentScope=null, accMonthTouched=false;
@@ -419,7 +423,10 @@ let excludedFolders=new Set();
 function setCurrentScope(scope){ currentScope=scope||null; excludedFolders=new Set(); localStorage.setItem(scopeKey(), scope===null?'':scope); render(); }
 function accountMonthOf(e){ return e.accountMonth||ym(e.date); }
 function isMonthClosed(mm){ return !!(state.closedMonths&&state.closedMonths[mm]); }
-function availableMonths(){ const set=new Set(state.expenses.map(accountMonthOf)); set.add(ym(new Date())); if(state.closedMonths) Object.keys(state.closedMonths).forEach(m=>set.add(m)); return [...set].sort().reverse(); }
+function isMonthArchived(mm){ return !!(state.archivedMonths&&state.archivedMonths[mm]); }
+function availableMonths(){ const set=new Set(state.expenses.map(accountMonthOf)); set.add(ym(new Date())); if(state.closedMonths) Object.keys(state.closedMonths).forEach(m=>set.add(m)); if(state.archivedMonths) Object.keys(state.archivedMonths).forEach(m=>set.add(m)); return [...set].sort().reverse(); }
+function archiveMonth(mm,after){ state.archivedMonths=state.archivedMonths||{}; state.archivedMonths[mm]=Date.now(); if(currentScope==='m:'+mm) setCurrentScope(null); commit(); if(after) after(); }
+function unarchiveMonth(mm,after){ if(state.archivedMonths) delete state.archivedMonths[mm]; commit(); if(after) after(); }
 function scopeLabel(scope){ if(!scope) return 'Todo el proyecto'; if(scope.startsWith('m:')){ const mm=scope.slice(2); const t=ymLabel(mm).replace(/^\w/,c=>c.toUpperCase()); return t+(isMonthClosed(mm)?' 🔒':''); } if(scope.startsWith('g:')){ const g=groupById(scope.slice(2)); return g?(g.name+(g.closed?' 🔒':'')):'Todo el proyecto'; } return 'Todo el proyecto'; }
 function scopedExpenses(){
   if(!currentScope) return state.expenses;
@@ -473,7 +480,7 @@ async function uniqueInviteCode(name){
 }
 
 function loadLocal(){ state=freshState(); try{ const s=JSON.parse(localStorage.getItem(stateKey())); if(s&&s.members) state=migrate(s); }catch(e){} me=localStorage.getItem(meKey())||null; if(!state.members.find(m=>m.id===me)) me=state.members[0]?state.members[0].id:null; const storedScope=localStorage.getItem(scopeKey()); currentScope=(storedScope===null)?('m:'+ym(new Date())):(storedScope||null); if(currentScope&&currentScope.startsWith('g:')&&!groupById(currentScope.slice(2))) currentScope='m:'+ym(new Date()); }
-function migrate(s){ s.projectName=s.projectName||'Sincro'; s.adminId=s.adminId||(s.members&&s.members[0]&&s.members[0].id)||null; s.settings=Object.assign({monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null},s.settings||{}); s.expenses=(s.expenses||[]).map(e=>Object.assign({groupId:null,accountMonth:null},e)); s.closedMonths=s.closedMonths||{}; s.categories=s.categories||JSON.parse(JSON.stringify(DEFAULT_CATS)); s.groups=(s.groups||[]).map(g=>(g.parentId&&g.parentId.startsWith('m:'))?g:Object.assign({},g,{parentId:'m:'+ym(new Date())})); s.members=(s.members||[]).map((m,i)=>Object.assign({color:COLORS[i%COLORS.length],avatar:{type:'emoji',value:AVATARS[i%AVATARS.length]},inviteCode:null,blocked:false},m)); return s; }
+function migrate(s){ s.projectName=s.projectName||'Sincro'; s.adminId=s.adminId||(s.members&&s.members[0]&&s.members[0].id)||null; s.settings=Object.assign({monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null},s.settings||{}); s.expenses=(s.expenses||[]).map(e=>Object.assign({groupId:null,accountMonth:null},e)); s.closedMonths=s.closedMonths||{}; s.archivedMonths=s.archivedMonths||{}; s.categories=s.categories||JSON.parse(JSON.stringify(DEFAULT_CATS)); s.groups=(s.groups||[]).map(g=>(g.parentId&&g.parentId.startsWith('m:'))?g:Object.assign({},g,{parentId:'m:'+ym(new Date())})); s.members=(s.members||[]).map((m,i)=>Object.assign({color:COLORS[i%COLORS.length],avatar:{type:'emoji',value:AVATARS[i%AVATARS.length]},inviteCode:null,blocked:false},m)); return s; }
 function saveLocal(){ localStorage.setItem(stateKey(),JSON.stringify(state)); if(me) localStorage.setItem(meKey(),me); rememberProject(); }
 function projects(){ try{ return JSON.parse(localStorage.getItem(LS_PROJECTS))||[]; }catch(e){ return []; } }
 function rememberProject(){ const code=syncCode||'local'; const list=projects().filter(p=>p.code!==code); list.unshift({code,name:state.projectName}); localStorage.setItem(LS_PROJECTS,JSON.stringify(list.slice(0,20))); }
@@ -786,23 +793,24 @@ function monthStatusHtml(mm){
   return st.map(d=>`<span style="color:var(--bad)">${esc(mname(d.from))} debe ${fmt(d.amount)} a ${esc(mname(d.to))}</span>`).join('<br>');
 }
 function treeMonthHtml(mm){
-  const closed=isMonthClosed(mm); const sc='m:'+mm; const label=ymLabel(mm).replace(/^\w/,c=>c.toUpperCase());
+  const closed=isMonthClosed(mm); const archived=isMonthArchived(mm); const sc='m:'+mm; const label=ymLabel(mm).replace(/^\w/,c=>c.toUpperCase());
   const kids=groupsUnderMonth(mm); const exp=!!treeExpanded[mm];
-  let html=`<div class="tree-row ${closed?'closed':''}">
+  const active=currentScope===sc;
+  let html=`<div class="tree-row ${closed?'closed':''} ${archived?'archived':''} ${active?'active':''}">
     <button class="tree-toggle" data-toggle="${mm}">${exp?'▾':'▸'}</button>
-    <button class="tree-name" data-scope="${sc}"><span style="display:block">${closed?'🔒 ':'🗓️ '}${label}${currentScope===sc?' <span class="muted small">(aquí)</span>':''}</span><span class="small" style="display:block;font-weight:400;margin-top:2px">${monthStatusHtml(mm)}</span></button>
+    <button class="tree-name" data-scope="${sc}"><span style="display:block">${archived?'📦 ':(closed?'🔒 ':'🗓️ ')}${label}</span><span class="small" style="display:block;font-weight:400;margin-top:2px">${monthStatusHtml(mm)}</span></button>
     <button class="tree-more" data-more="${sc}">⋯</button>
   </div>`;
   if(exp){
     html+=`<div class="tree-children">`;
     kids.forEach(g=>{
-      const gsc='g:'+g.id;
+      const gsc='g:'+g.id; const gactive=currentScope===gsc;
       const glist=state.expenses.filter(e=>e.groupId===g.id);
       const gb=computeBalancesFor(glist); const gst=settlements(gb);
       const gstatus=!glist.length?`<span class="muted">sin movimientos</span>`:(!gst.length?`<span style="color:var(--ok)">✓ en paz</span>`:gst.map(d=>`<span style="color:var(--bad)">${esc(mname(d.from))} debe ${fmt(d.amount)} a ${esc(mname(d.to))}</span>`).join('<br>'));
-      html+=`<div class="tree-row child">
+      html+=`<div class="tree-row child ${gactive?'active':''}">
         <span class="tree-guide">└─</span>
-        <button class="tree-name" data-scope="${gsc}"><span style="display:block">${g.closed?'🔒 ':'📌 '}${esc(g.name)}${currentScope===gsc?' <span class="muted small">(aquí)</span>':''}</span><span class="small" style="display:block;font-weight:400;margin-top:2px">${gstatus}</span></button>
+        <button class="tree-name" data-scope="${gsc}"><span style="display:block">${g.closed?'🔒 ':'📌 '}${esc(g.name)}</span><span class="small" style="display:block;font-weight:400;margin-top:2px">${gstatus}</span></button>
         <button class="tree-more" data-more="${gsc}">⋯</button>
       </div>`;
     });
@@ -811,12 +819,16 @@ function treeMonthHtml(mm){
   return html;
 }
 function treeBodyHtml(){
-  const months=availableMonths(); const openMonths=months.filter(m=>!isMonthClosed(m)); const closedMonths=months.filter(m=>isMonthClosed(m));
-  let html=`<button class="tree-row" id="allProjectsRow" style="width:100%;text-align:left">
-      <span class="tree-toggle">·</span><span class="tree-name" style="flex:1">🗂️ Todo el proyecto${!currentScope?' <span class="muted small">(aquí)</span>':''}</span>
+  const months=availableMonths();
+  const archivedMonths=months.filter(m=>isMonthArchived(m));
+  const visibleMonths=months.filter(m=>!isMonthArchived(m));
+  const openMonths=visibleMonths.filter(m=>!isMonthClosed(m)); const closedMonths=visibleMonths.filter(m=>isMonthClosed(m));
+  let html=`<button class="tree-row ${!currentScope?'active':''}" id="allProjectsRow" style="width:100%;text-align:left">
+      <span class="tree-toggle">·</span><span class="tree-name" style="flex:1">🗂️ Todo el proyecto</span>
     </button>`;
   openMonths.forEach(mm=>{ html+=treeMonthHtml(mm); });
   if(closedMonths.length){ html+=`<button type="button" class="btn ghost sm" id="toggleClosedMonths" style="margin-top:10px">🔒 Ver ${closedMonths.length} ${closedMonths.length===1?'mes cerrado':'meses cerrados'}</button><div id="closedMonthsBox" class="hide">`+closedMonths.map(treeMonthHtml).join('')+`</div>`; }
+  if(archivedMonths.length){ html+=`<button type="button" class="btn ghost sm" id="toggleArchivedMonths" style="margin-top:10px">📦 Ver ${archivedMonths.length} ${archivedMonths.length===1?'mes archivado':'meses archivados'}</button><div id="archivedMonthsBox" class="hide">`+archivedMonths.map(treeMonthHtml).join('')+`</div>`; }
   return html;
 }
 function bindTreeEvents(root,onNavigate,redraw){
@@ -826,6 +838,7 @@ function bindTreeEvents(root,onNavigate,redraw){
   root.querySelectorAll('[data-addfolder]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); const mm=b.dataset.addfolder; const n=prompt('Nombre de la carpeta (por ejemplo, un viaje):',''); if(!n||!n.trim()) return; state.groups.push({id:'g'+uid(),name:n.trim(),parentId:'m:'+mm,closed:false,closedAt:null,closedSummary:null}); treeExpanded[mm]=true; commit(); redraw(); });
   root.querySelectorAll('[data-more]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); openScopeActions(b.dataset.more,redraw); });
   const tcm=root.querySelector('#toggleClosedMonths'); if(tcm) tcm.onclick=()=>{ root.querySelector('#closedMonthsBox').classList.toggle('hide'); };
+  const tam=root.querySelector('#toggleArchivedMonths'); if(tam) tam.onclick=()=>{ root.querySelector('#archivedMonthsBox').classList.toggle('hide'); };
 }
 function renderInicioList(){
   const root=$('projectTree'); root.innerHTML=treeBodyHtml();
@@ -843,9 +856,12 @@ function openGroupsSheet(){
 }
 function openScopeActions(scope,after){
   if(scope.startsWith('m:')){
-    const mm=scope.slice(2); const closed=isMonthClosed(mm); const label=ymLabel(mm).replace(/^\w/,c=>c.toUpperCase());
-    const opt=prompt((closed?'Reabrir':'Cerrar')+' '+label+'. Escribe "si" para confirmar:'); if(!opt||opt.trim().toLowerCase()!=='si') return;
-    if(closed) reopenMonth(mm,after); else closeMonthFlow(mm,after);
+    const mm=scope.slice(2); const closed=isMonthClosed(mm); const archived=isMonthArchived(mm); const label=ymLabel(mm).replace(/^\w/,c=>c.toUpperCase());
+    const lines=[label,'','1) '+(closed?'Reabrir mes':'Cerrar mes'),'2) '+(archived?'Desarchivar (volver a mostrar)':'Archivar (ocultar de la lista)'),'','Escribe 1 ó 2:'];
+    const choice=prompt(lines.join('\n')); if(!choice) return;
+    const c=choice.trim();
+    if(c==='1'){ if(closed) reopenMonth(mm,after); else closeMonthFlow(mm,after); }
+    else if(c==='2'){ if(archived) unarchiveMonth(mm,after); else archiveMonth(mm,after); }
   } else if(scope.startsWith('g:')){
     const g=groupById(scope.slice(2)); if(!g) return;
     if(g.closed){ if(confirm('¿Reabrir '+g.name+'?')){ g.closed=false; g.closedAt=null; commit(); if(after) after(); } }
