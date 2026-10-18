@@ -11,8 +11,8 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="color-scheme" content="light only">
 <title>Sincro · Gastos compartidos</title>
-<script>window.SINCRO_VERSION='20261015174118';</script>
-<script src="update.js?v=20261015174118"></script>
+<script>window.SINCRO_VERSION='20261018160758';</script>
+<script src="update.js?v=20261018160758"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -854,14 +854,23 @@ function openGroupsSheet(){
   };
   draw(); $('sheetBg').classList.add('open');
 }
+function actionMenu(title,actions){
+  const bg=document.createElement('div'); bg.className='sheet-bg open'; bg.style.zIndex=40;
+  const box=document.createElement('div'); box.className='sheet'; box.style.background='#fff';
+  box.innerHTML='<h2 style="margin:0 0 12px">'+esc(title)+'</h2>'+actions.map((a,i)=>'<button type="button" class="btn ghost block" data-i="'+i+'" style="margin-bottom:10px;text-align:left;display:block;width:100%;padding:12px 14px;height:auto"><b>'+a.text+'</b>'+(a.sub?'<br><span class="muted small" style="font-weight:400">'+a.sub+'</span>':'')+'</button>').join('')+'<button type="button" class="btn block" data-cancel="1" style="width:100%">Cancelar</button>';
+  const close=()=>bg.remove();
+  bg.onclick=ev=>{ if(ev.target===bg) close(); };
+  box.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{ close(); actions[+b.dataset.i].run(); });
+  box.querySelector('[data-cancel]').onclick=close;
+  bg.appendChild(box); document.body.appendChild(bg);
+}
 function openScopeActions(scope,after){
   if(scope.startsWith('m:')){
     const mm=scope.slice(2); const closed=isMonthClosed(mm); const archived=isMonthArchived(mm); const label=ymLabel(mm).replace(/^\w/,c=>c.toUpperCase());
-    const lines=[label,'','1) '+(closed?'Reabrir mes':'Cerrar mes'),'2) '+(archived?'Desarchivar (volver a mostrar)':'Archivar (ocultar de la lista)'),'','Escribe 1 ó 2:'];
-    const choice=prompt(lines.join('\n')); if(!choice) return;
-    const c=choice.trim();
-    if(c==='1'){ if(closed) reopenMonth(mm,after); else closeMonthFlow(mm,after); }
-    else if(c==='2'){ if(archived) unarchiveMonth(mm,after); else archiveMonth(mm,after); }
+    actionMenu(label,[
+      {text:closed?'🔓 Reabrir mes':'🔒 Cerrar mes', sub:closed?'Volver a permitir gastos en este mes':'Marcar el mes como terminado', run:()=>{ if(closed) reopenMonth(mm,after); else closeMonthFlow(mm,after); }},
+      {text:archived?'📂 Desarchivar':'📦 Archivar', sub:archived?'Volver a mostrarlo en la lista':'Ocultarlo de la lista (se consulta en "Ver meses archivados")', run:()=>{ if(archived) unarchiveMonth(mm,after); else archiveMonth(mm,after); }}
+    ]);
   } else if(scope.startsWith('g:')){
     const g=groupById(scope.slice(2)); if(!g) return;
     if(g.closed){ if(confirm('¿Reabrir '+g.name+'?')){ g.closed=false; g.closedAt=null; commit(); if(after) after(); } }
