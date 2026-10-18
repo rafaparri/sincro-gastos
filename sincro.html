@@ -11,8 +11,8 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="color-scheme" content="light only">
 <title>Sincro · Gastos compartidos</title>
-<script>window.SINCRO_VERSION='20261018160758';</script>
-<script src="update.js?v=20261018160758"></script>
+<script>window.SINCRO_VERSION='20261018161031';</script>
+<script src="update.js?v=20261018161031"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -842,7 +842,7 @@ function bindTreeEvents(root,onNavigate,redraw){
 }
 function renderInicioList(){
   const root=$('projectTree'); root.innerHTML=treeBodyHtml();
-  bindTreeEvents(root, render, renderInicioList);
+  bindTreeEvents(root, ()=>{ render(); showView('gastos'); }, renderInicioList);
 }
 function openGroupsSheet(){
   const sh=$('sheet');
