@@ -11,12 +11,13 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="color-scheme" content="light only">
 <title>Sincro · Gastos compartidos</title>
-<script>window.SINCRO_VERSION='20261018161031';</script>
-<script src="update.js?v=20261018161031"></script>
+<script>window.SINCRO_VERSION='20261102165413';</script>
+<script src="update.js?v=20261102165413"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
@@ -53,7 +54,7 @@
   *{box-sizing:border-box}
   html{font-size:var(--fs-base);color-scheme:light only;background:#fff !important}
   body{margin:0;background:#fff !important;color:#14202b !important;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.35;-webkit-font-smoothing:antialiased;padding-bottom:calc(var(--tabbar) + env(safe-area-inset-bottom))}
-  #setup,#app,.sheet,main{background:#fff;color:#14202b}
+  #setup,#login,#app,.sheet,main{background:#fff;color:#14202b}
   h1,h2,h3{margin:0;font-weight:700;line-height:1.15}
   h1{font-size:1.5rem} h2{font-size:1.25rem} h3{font-size:1.05rem}
   p{margin:0} button{font:inherit;cursor:pointer} input,select,textarea{font:inherit;color:var(--ink)}
@@ -198,11 +199,21 @@
   .sheet h2{margin-bottom:14px} .sheet .photo-full{width:100%;border-radius:var(--radius);border:2px solid var(--line)}
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tabbar) + 18px + env(safe-area-inset-bottom));background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
   .toast.show{opacity:1}
-  #setup{max-width:560px;margin:0 auto;padding:40px 22px} #setup h1{font-size:2.2rem;margin-bottom:4px} #setup .brand{display:flex;align-items:center;gap:14px;margin-bottom:6px} #setup p{margin-bottom:18px}
+  #setup,#login{max-width:560px;margin:0 auto;padding:40px 22px} #setup h1,#login h1{font-size:2.2rem;margin-bottom:4px} #setup .brand,#login .brand{display:flex;align-items:center;gap:14px;margin-bottom:6px} #setup p,#login p{margin-bottom:18px}
   @media (prefers-reduced-motion:reduce){ *{transition:none !important;animation:none !important} }
 </style>
 </head>
 <body>
+
+<div id="login" class="hide">
+  <div class="brand"><svg class="logo big" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="80" cy="85" r="45" fill="#2563EB" opacity=".7" style="mix-blend-mode:multiply"/><circle cx="120" cy="85" r="45" fill="#8B5CF6" opacity=".7" style="mix-blend-mode:multiply"/><circle cx="100" cy="120" r="45" fill="#06B6D4" opacity=".7" style="mix-blend-mode:multiply"/><circle cx="100" cy="97" r="12" fill="#10B981"/></svg><h1>Sincro</h1></div>
+  <p class="muted">Entra con tu cuenta. Solo las personas de cada proyecto pueden ver sus gastos.</p>
+  <div class="field"><label for="loginEmail">Correo</label><input id="loginEmail" class="input" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
+  <div class="field"><label for="loginPass">Contraseña</label><input id="loginPass" class="input" type="password" autocomplete="current-password"><div class="help">Si es tu primera vez, escribe tu correo y una contraseña nueva (mínimo 6 caracteres) y pulsa «Crear cuenta».</div></div>
+  <button class="btn primary block" id="loginGo">Entrar</button>
+  <div class="form-actions" style="margin-top:12px"><button class="btn ghost" id="loginCreate">Crear cuenta</button><button class="btn ghost" id="loginForgot">Olvidé la contraseña</button></div>
+  <p class="muted small" id="loginMsg" style="margin-top:16px"></p>
+</div>
 
 <div id="setup" class="hide">
   <div class="brand"><svg class="logo big" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="80" cy="85" r="45" fill="#2563EB" opacity=".7" style="mix-blend-mode:multiply"/><circle cx="120" cy="85" r="45" fill="#8B5CF6" opacity=".7" style="mix-blend-mode:multiply"/><circle cx="100" cy="120" r="45" fill="#06B6D4" opacity=".7" style="mix-blend-mode:multiply"/><circle cx="100" cy="97" r="12" fill="#10B981"/></svg><h1>Sincro</h1></div>
@@ -215,11 +226,11 @@
   </div>
   <div id="setupNew">
     <div class="field"><label for="setupName">Nombre del proyecto</label><input id="setupName" class="input" placeholder="p. ej. Casa 2026" autocomplete="off"></div>
-    <div class="field"><label for="setupMyName">Tu nombre</label><input id="setupMyName" class="input" placeholder="p. ej. Rafa" autocomplete="off"><div class="help">Después podrás invitar a más personas desde Ajustes, cada una con su propio código.</div></div>
+    <div class="field"><label for="setupMyName">Tu nombre</label><input id="setupMyName" class="input" placeholder="p. ej. Rafa" autocomplete="off"><div class="help">Después podrás invitar a más personas desde Ajustes, cada una con su propio código.</div><p class="small muted" id="setupAccount" style="margin-top:10px"></p></div>
   </div>
   <div id="setupJoin" class="hide">
     <div id="setupRecent"></div>
-    <div class="field"><label for="setupCode">Tu código</label><input id="setupCode" class="input" placeholder="p. ej. cristina-k3f9" autocapitalize="off" autocomplete="off"><div class="help">Tu código personal, o el que te haya pasado quien creó el proyecto.</div></div>
+    <div class="field"><label for="setupCode">Tu código</label><input id="setupCode" class="input" placeholder="p. ej. cristina-k3f9m2xq" autocapitalize="off" autocomplete="off"><div class="help">El código que te ha enviado otra persona del proyecto. Cada código sirve una sola vez.</div></div>
   </div>
   <button class="btn primary block" id="setupGo">Entrar</button>
   <p class="muted small" id="setupMsg" style="margin-top:16px"></p>
@@ -329,10 +340,16 @@
         <p class="small muted">Identificador interno: <code id="setCode"></code></p>
         <div class="form-actions"><button class="btn ghost" id="forcePush">Volver a subir todo</button></div>
         <div class="form-actions" style="margin-top:12px"><button class="btn ghost block" id="openGroupsFromSettings">Ver proyectos y meses</button></div>
-        <div class="field" style="margin-top:18px" id="myCodeWrap"><label>Tu código personal</label><div class="inline"><code id="myCodeVal" style="flex:1">—</code><button class="btn ghost sm" id="myCodeShare">Enviar</button></div><div class="help">Guárdalo. Con él recuperas el acceso a este proyecto desde cualquier móvil, aunque borres los datos de este.</div></div>
+        <div class="field hide" style="margin-top:18px" id="myCodeWrap"><label>Tu código personal</label><div class="inline"><code id="myCodeVal" style="flex:1">—</code><button class="btn ghost sm" id="myCodeShare">Enviar</button></div><div class="help">Guárdalo. Con él recuperas el acceso a este proyecto desde cualquier móvil, aunque borres los datos de este.</div></div>
         <h3 style="margin-top:22px">Mis proyectos</h3>
         <div class="list" id="projList"></div>
         <div class="form-actions" style="margin-top:12px"><button class="btn ghost" id="newProj">Nuevo proyecto</button><button class="btn ghost" id="joinProj">Cargar con un código</button></div>
+      </div>
+
+      <div class="set-block">
+        <h2>Cuenta</h2>
+        <p class="muted">Has entrado como <b id="accEmail">—</b>.</p>
+        <div class="form-actions"><button class="btn ghost" id="logoutBtn">Cerrar sesión</button></div>
       </div>
 
       <div class="set-block">
@@ -468,22 +485,24 @@ function reopenMonth(mm,after){ if(state.closedMonths) delete state.closedMonths
 function groupOptionsHtml(selected,mm){ let html=`<option value="">General (sin carpeta)</option>`; groupsUnderMonth(mm).forEach(g=>{ html+=`<option value="${g.id}" ${selected===g.id?'selected':''}>${esc(g.name)}${g.closed?' 🔒':''}</option>`; }); return html; }
 function computeBalancesFor(list){ const b={}; state.members.forEach(m=>b[m.id]=0); for(const e of list){ if(e.type==='transfer'){ b[e.payerId]=(b[e.payerId]||0)+e.amount; b[e.toId]=(b[e.toId]||0)-e.amount; } else { b[e.payerId]=(b[e.payerId]||0)+e.amount; for(const m of state.members) b[m.id]-=shareOf(e,m.id); } } return b; }
 function slug(t){ return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
-function genCode(name){ return (slug(name)||'x')+'-'+Math.random().toString(36).slice(2,6); }
+function rndCode(n){ const a='abcdefghijkmnpqrstuvwxyz23456789'; const b=crypto.getRandomValues(new Uint8Array(n)); return Array.from(b,x=>a[x%a.length]).join(''); }
+function genCode(name){ return (slug(name).slice(0,12)||'x')+'-'+rndCode(8); }
 async function uniqueInviteCode(name){
   const db=ensureFirebase();
   for(let i=0;i<6;i++){
     const code=genCode(name);
     if(!db) return code;
-    try{ const s=await col().doc(code).get(); if(!s.exists) return code; }catch(e){ return code; }
+    try{ const s=await invRef(code).get(); if(!s.exists) return code; }catch(e){ return code; }
   }
-  return (slug(name)||'x')+'-'+Date.now().toString(36).slice(-6);
+  return (slug(name).slice(0,12)||'x')+'-'+rndCode(10);
 }
 
 function loadLocal(){ state=freshState(); try{ const s=JSON.parse(localStorage.getItem(stateKey())); if(s&&s.members) state=migrate(s); }catch(e){} me=localStorage.getItem(meKey())||null; if(!state.members.find(m=>m.id===me)) me=state.members[0]?state.members[0].id:null; const storedScope=localStorage.getItem(scopeKey()); currentScope=(storedScope===null)?('m:'+ym(new Date())):(storedScope||null); if(currentScope&&currentScope.startsWith('g:')&&!groupById(currentScope.slice(2))) currentScope='m:'+ym(new Date()); }
 function migrate(s){ s.projectName=s.projectName||'Sincro'; s.adminId=s.adminId||(s.members&&s.members[0]&&s.members[0].id)||null; s.settings=Object.assign({monthlyBudget:null,avgMonths:3,avgPct:20,bigOne:null},s.settings||{}); s.expenses=(s.expenses||[]).map(e=>Object.assign({groupId:null,accountMonth:null},e)); s.closedMonths=s.closedMonths||{}; s.archivedMonths=s.archivedMonths||{}; s.categories=s.categories||JSON.parse(JSON.stringify(DEFAULT_CATS)); s.groups=(s.groups||[]).map(g=>(g.parentId&&g.parentId.startsWith('m:'))?g:Object.assign({},g,{parentId:'m:'+ym(new Date())})); s.members=(s.members||[]).map((m,i)=>Object.assign({color:COLORS[i%COLORS.length],avatar:{type:'emoji',value:AVATARS[i%AVATARS.length]},inviteCode:null,blocked:false},m)); return s; }
 function saveLocal(){ localStorage.setItem(stateKey(),JSON.stringify(state)); if(me) localStorage.setItem(meKey(),me); rememberProject(); }
-function projects(){ try{ return JSON.parse(localStorage.getItem(LS_PROJECTS))||[]; }catch(e){ return []; } }
-function rememberProject(){ const code=syncCode||'local'; const list=projects().filter(p=>p.code!==code); list.unshift({code,name:state.projectName}); localStorage.setItem(LS_PROJECTS,JSON.stringify(list.slice(0,20))); }
+function localProjects(){ try{ return JSON.parse(localStorage.getItem(LS_PROJECTS))||[]; }catch(e){ return []; } }
+function projects(){ if(!authUser) return localProjects(); const cur=syncCode&&!cloudProjects.find(p=>p.code===syncCode)?[{code:syncCode,name:state.projectName}]:[]; return cloudProjects.map(p=>p.code===syncCode?{code:p.code,name:state.projectName}:p).concat(cur); }
+function rememberProject(){ const code=syncCode||'local'; const list=localProjects().filter(p=>p.code!==code); list.unshift({code,name:state.projectName}); localStorage.setItem(LS_PROJECTS,JSON.stringify(list.slice(0,20))); }
 function commit(){ state.updatedAt=Date.now(); saveLocal(); schedulePush(); render(); }
 
 /* ============================ CÁLCULOS ============================ */
@@ -734,10 +753,10 @@ function renderSettings(){
   if(guardOn) return;
   $('memberList').innerHTML=state.members.map(m=>`<div class="member-row" data-id="${m.id}">
     <div class="top">${avHtml(m)}<div class="n" style="color:${m.color}">${esc(m.name)}${m.id===me?' <span class="muted small">(yo)</span>':''}${m.blocked?' <span class="small" style="color:var(--bad)">· bloqueada</span>':''}</div></div>
-    ${m.inviteCode?`<div class="code">🔑 <code>${esc(m.inviteCode)}</code></div>`:!m.blocked?`<div class="s muted small">Sin código todavía</div>`:''}
+    ${hasAccount(m)?`<div class="s small" style="color:var(--good,#16a34a)">✅ Con cuenta</div>`:validCode(m)?`<div class="code">🔑 <code>${esc(m.inviteCode)}</code></div>`:!m.blocked?`<div class="s muted small">Sin código todavía</div>`:''}
     <div class="acts">
       <button class="btn ghost sm" data-a="edit">Editar</button>
-      ${m.inviteCode?`<button class="btn ghost sm" data-a="share">Enviar código</button><button class="btn ghost sm icon" data-a="regen" title="Regenerar código">↻</button>`:(m.id!==me&&!m.blocked?`<button class="btn ghost sm" data-a="gencode">Generar código</button>`:'')}
+      ${hasAccount(m)||m.id===me?'':validCode(m)?`<button class="btn ghost sm" data-a="share">Enviar código</button><button class="btn ghost sm icon" data-a="regen" title="Regenerar código">↻</button>`:(!m.blocked?`<button class="btn ghost sm" data-a="gencode">Generar código</button>`:'')}
     </div>
   </div>`).join('')||'<p class="empty">Todavía no hay nadie.</p>';
   $('memberList').querySelectorAll('.member-row').forEach(row=>{ const m=state.members.find(x=>x.id===row.dataset.id); row.querySelector('[data-a=edit]').onclick=()=>openMemberSheet(m); const sh=row.querySelector('[data-a=share]'); if(sh) sh.onclick=()=>shareInvite(m); const gc=row.querySelector('[data-a=gencode]'); if(gc) gc.onclick=()=>generateCodeFor(m); const rg=row.querySelector('[data-a=regen]'); if(rg) rg.onclick=()=>regenerateCodeFor(m); });
@@ -749,6 +768,7 @@ function renderSettings(){
   });
   $('setMonthlyBudget').value=state.settings.monthlyBudget!=null?fmtN(state.settings.monthlyBudget):''; $('setAvgMonths').value=state.settings.avgMonths??3; $('setAvgPct').value=state.settings.avgPct??20; $('setBigOne').value=state.settings.bigOne!=null?fmtN(state.settings.bigOne):'';
   $('setProjName').value=state.projectName||''; $('setCode').textContent=syncCode||'(solo este móvil)';
+  $('accEmail').textContent=authUser?authUser.email:'(sin conexión)';
   const myM=state.members.find(x=>x.id===me); $('myCodeVal').textContent=myM&&myM.inviteCode?myM.inviteCode:'(aún no generado; hace falta conexión)';
   const cur=syncCode||'local';
   $('projList').innerHTML=projects().map(p=>`<button class="row" data-code="${esc(p.code)}"><span class="emoji">${p.code===cur?'✅':'📁'}</span><span><span class="t">${esc(p.name)}</span><br><span class="s">${p.code==='local'?'solo este móvil':'sincronizado'}</span></span><span class="amt small">${p.code===cur?'abierto':'abrir'}</span></button>`).join('');
@@ -775,10 +795,10 @@ function openMemberSheet(m){
     const pd=$('mPhotoDel'); if(pd) pd.onclick=()=>{ keep(); av={type:'emoji',value:AVATARS[0]}; draw(); };
     const sm=$('mSetMe'); if(sm) sm.onclick=()=>{ me=m.id; localStorage.setItem(meKey(),me); closeSheet(); render(); toast('Ahora eres '+m.name); };
     $('mClose').onclick=closeSheet;
-    $('mSave').onclick=()=>{ m.name=$('mName').value.trim()||m.name; m.avatar=av; m.color=color; closeSheet(); commit(); if(m.inviteCode) writeInvite(m); };
-    const del=$('mDel'); if(del) del.onclick=()=>{ if(!confirm(`¿Quitar a ${m.name} del proyecto?`)) return; state.members=state.members.filter(x=>x.id!==m.id); if(m.inviteCode) deleteInvite(m.inviteCode); if(me===m.id) me=state.members[0].id; closeSheet(); commit(); };
-    const fdel=$('mForceDel'); if(fdel) fdel.onclick=()=>{ if(!confirm(`Vas a eliminar a ${m.name} sin comprobar saldos ni gastos. Sus apuntes se quedarán asignados a esta persona ya eliminada y podrían mostrarse raros. ¿Seguro?`)) return; state.members=state.members.filter(x=>x.id!==m.id); if(m.inviteCode) deleteInvite(m.inviteCode); if(me===m.id) me=state.members[0].id; closeSheet(); commit(); };
-    const blk=$('mBlock'); if(blk) blk.onclick=()=>{ m.blocked=!m.blocked; if(m.blocked&&m.inviteCode){ deleteInvite(m.inviteCode); m.inviteCode=null; } commit(); draw(); toast(m.blocked?'Acceso bloqueado':'Acceso desbloqueado'); };
+    $('mSave').onclick=()=>{ m.name=$('mName').value.trim()||m.name; m.avatar=av; m.color=color; closeSheet(); commit(); if(validCode(m)) invRef(m.inviteCode).update({name:m.name}).catch(()=>{}); };
+    const del=$('mDel'); if(del) del.onclick=()=>{ if(!confirm(`¿Quitar a ${m.name} del proyecto?`)) return; state.members=state.members.filter(x=>x.id!==m.id); if(validCode(m)) deleteInvite(m.inviteCode); revokeAccess(m.id); if(me===m.id) me=state.members[0].id; closeSheet(); commit(); };
+    const fdel=$('mForceDel'); if(fdel) fdel.onclick=()=>{ if(!confirm(`Vas a eliminar a ${m.name} sin comprobar saldos ni gastos. Sus apuntes se quedarán asignados a esta persona ya eliminada y podrían mostrarse raros. ¿Seguro?`)) return; state.members=state.members.filter(x=>x.id!==m.id); if(validCode(m)) deleteInvite(m.inviteCode); revokeAccess(m.id); if(me===m.id) me=state.members[0].id; closeSheet(); commit(); };
+    const blk=$('mBlock'); if(blk) blk.onclick=()=>{ m.blocked=!m.blocked; if(m.blocked){ if(validCode(m)) deleteInvite(m.inviteCode); m.inviteCode=null; m.inviteV=null; revokeAccess(m.id); } commit(); draw(); toast(m.blocked?'Acceso bloqueado':'Desbloqueado: genérale un código nuevo para que vuelva a entrar'); };
   };
   draw(); $('sheetBg').classList.add('open');
 }
@@ -892,26 +912,26 @@ async function ensureMyCode(){
 
 async function generateCodeFor(m){
   if(!syncCode){ toast('Este proyecto no está sincronizado; no se pueden generar códigos'); return; }
-  if(m.inviteCode){ shareInvite(m); return; }
-  m.inviteCode=await uniqueInviteCode(m.name); commit();
+  if(m.inviteCode&&m.inviteV===2){ shareInvite(m); return; }
+  m.inviteCode=await uniqueInviteCode(m.name); m.inviteV=2; commit();
   const ok=await writeInvite(m); if(ok) shareInvite(m); else toast('No se ha podido crear el código (sin conexión)');
 }
 async function regenerateCodeFor(m){
   if(!syncCode){ toast('Este proyecto no está sincronizado'); return; }
   if(!confirm(`Se creará un código nuevo para ${m.name} y el anterior (${m.inviteCode}) dejará de funcionar. ¿Continuar?`)) return;
   const oldCode=m.inviteCode;
-  m.inviteCode=await uniqueInviteCode(m.name); commit();
-  if(oldCode) deleteInvite(oldCode);
+  const oldV=m.inviteV; m.inviteCode=await uniqueInviteCode(m.name); m.inviteV=2; commit();
+  if(oldCode&&oldV===2) deleteInvite(oldCode);
   const ok=await writeInvite(m); if(ok){ toast('Código nuevo generado'); shareInvite(m); } else toast('No se ha podido guardar (sin conexión)');
 }
 async function invite(){
   if(!syncCode){ toast('Este proyecto no está sincronizado; no se pueden enviar invitaciones'); return; }
   const n=prompt('Nombre de la persona a la que invitas:',''); if(!n||!n.trim()) return;
-  const m=newMember(n.trim(),state.members.length); m.inviteCode=await uniqueInviteCode(n.trim());
+  const m=newMember(n.trim(),state.members.length); m.inviteCode=await uniqueInviteCode(n.trim()); m.inviteV=2;
   state.members.push(m); commit();
   const ok=await writeInvite(m); if(ok) shareInvite(m); else toast('No se ha podido crear la invitación (sin conexión)');
 }
-function shareInvite(m){ const url=location.href.split('?')[0].split('#')[0]; const txt=`Hola ${m.name}, te invito a "${state.projectName}" en Sincro. Abre ${url} , pulsa "Tengo un código" y escribe: ${m.inviteCode}`; if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); } else { navigator.clipboard&&navigator.clipboard.writeText(txt); toast('Invitación copiada'); } }
+function shareInvite(m){ const url=location.href.split('?')[0].split('#')[0]; const txt=`Hola ${m.name}, te invito a "${state.projectName}" en Sincro. Abre ${url} , crea tu cuenta, pulsa "Cargar proyecto existente" y escribe este código (sirve una sola vez): ${m.inviteCode}`; if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); } else { navigator.clipboard&&navigator.clipboard.writeText(txt); toast('Invitación copiada'); } }
 function settingsBind(){
   const guard=fn=>()=>{guardOn=true;fn();commit();guardOn=false;};
   $('setMonthlyBudget').onchange=guard(()=>{const v=parseNum($('setMonthlyBudget').value);state.settings.monthlyBudget=isNaN(v)?null:v;});
@@ -925,7 +945,8 @@ function settingsBind(){
   $('myCodeShare').onclick=()=>{ const m=state.members.find(x=>x.id===me); if(!m||!m.inviteCode){ toast('Aún no tienes código; espera a que sincronice'); return; } shareInvite(m); };
   $('forcePush').onclick=()=>{ pushToCloudNow(true); toast('Subiendo todo…'); };
   $('newProj').onclick=()=>{ const n=prompt('Nombre del nuevo proyecto:',''); if(!n||!n.trim()) return; const my=prompt('Tu nombre en este proyecto:',me?mname(me):''); if(!my||!my.trim()) return; createProject(n.trim(),my.trim()); };
-  $('joinProj').onclick=()=>{ const c=prompt('Tu código (personal o de proyecto):',''); if(!c||!c.trim()) return; joinWithCode(c.trim()).then(ok=>{ if(!ok) toast('Ese código no existe o no hay conexión'); }); };
+  $('joinProj').onclick=()=>{ const c=prompt('Código de invitación:',''); if(!c||!c.trim()) return; joinWithCode(c.trim()).then(ok=>{ if(!ok) toast(syncErr||'Ese código no existe o no hay conexión'); }); };
+  $('logoutBtn').onclick=logout;
   $('syncBadge').onclick=()=>{ if(syncStatus==='error') alert('No se ha podido sincronizar.\n\nMotivo: '+(syncErr||'desconocido')+'\n\nSi estás viendo la app dentro de Claude, es normal: ahí las conexiones están bloqueadas. Ábrela desde su dirección de GitHub Pages.'); else if(syncStatus==='off') alert('Este proyecto solo existe en este móvil. Para compartirlo, crea un proyecto nuevo desde Ajustes.'); };
   $('exportCsv').onclick=exportCsv; $('exportJson').onclick=exportJson;
   $('importJson').onchange=ev=>{ const f=ev.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!s.members||!s.expenses) throw 0; if(!confirm('Esto sustituye todos los datos actuales por los de la copia. ¿Continuar?')) return; state=migrate(s); if(!state.members.find(m=>m.id===me)) me=(state.members[0]||{}).id||null; commit(); toast('Copia restaurada'); }catch(e){ toast('El archivo no es una copia válida'); } ev.target.value=''; }; r.readAsText(f); };
@@ -978,23 +999,46 @@ function exportJson(){ download('copia-'+slug(state.projectName)+'-'+todayStr()+
 function download(name,content,type){ const b=new Blob([content],{type}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
 
 /* ============================ SINCRONIZACIÓN ============================ */
-let fbDb=null, syncStatus='off', unsub=null, pushTimer=null, applyingRemote=false, syncErr='';
+// Versión con cuentas: cada proyecto vive en sincro/{id} y solo lo pueden leer
+// o escribir las cuentas que están en memberUids. Las invitaciones están en
+// sincro_invites/{código}, sirven una sola vez y el código es largo y aleatorio.
+// Los proyectos antiguos (sync_codes/{código}) se pasan solos a la versión
+// nueva la primera vez que alguien del proyecto entra con su cuenta.
+let fbDb=null, fbAuth=null, authUser=null, syncStatus='off', unsub=null, pushTimer=null, applyingRemote=false, syncErr='';
+let acl={memberUids:[],uidMember:{}}, cloudProjects=[];
+const ACL_KEYS=['memberUids','joins','uidMember','migratedFrom','migratedAt'];
 function ensureFirebase(){ if(fbDb) return fbDb; try{ if(typeof firebase==='undefined') throw new Error('No se ha podido cargar Firebase (sin conexión o bloqueado)'); if(!firebase.apps.length) firebase.initializeApp(firebaseConfig); fbDb=firebase.firestore(); return fbDb; }catch(e){ syncErr=e.message||String(e); return null; } }
-const col=()=>ensureFirebase().collection('sync_codes');
-const docRef=()=>col().doc(syncCode);
-const photoRef=id=>col().doc(syncCode).collection('users').doc('foto_'+id);
+function ensureAuth(){ if(fbAuth) return fbAuth; try{ if(!ensureFirebase()||!firebase.auth) throw new Error('No se ha podido cargar el inicio de sesión'); fbAuth=firebase.auth(); return fbAuth; }catch(e){ syncErr=e.message||String(e); return null; } }
+const FV=()=>firebase.firestore.FieldValue;
+const projRef=pid=>ensureFirebase().collection('sincro').doc(pid);
+const col=()=>ensureFirebase().collection('sincro');
+const docRef=()=>projRef(syncCode);
+const invRef=code=>ensureFirebase().collection('sincro_invites').doc(code);
+const legacyRef=code=>ensureFirebase().collection('sync_codes').doc(code);
+const photoRef=id=>docRef().collection('fotos').doc(id);
+function stripAcl(d){ const o=JSON.parse(JSON.stringify(d||{})); ACL_KEYS.concat(['app']).forEach(k=>delete o[k]); return o; }
+// Quita el acceso en la nube a las cuentas ligadas a esa persona del proyecto
+async function revokeAccess(memberId){ if(!syncCode||!authUser) return; const uids=Object.keys(acl.uidMember||{}).filter(u=>acl.uidMember[u]===memberId&&u!==authUser.uid); if(!uids.length) return; const upd={memberUids:FV().arrayRemove(...uids)}; uids.forEach(u=>upd['uidMember.'+u]=FV().delete()); try{ await docRef().update(upd); }catch(e){ toast('No se ha podido quitar el acceso: '+friendlyErr(e)); } }
+function hasAccount(m){ return Object.values(acl.uidMember||{}).includes(m.id); }
+function validCode(m){ return !!(m.inviteCode&&m.inviteV===2); }
+function friendlyErr(e){ const c=(e&&e.code)||''; if(c.includes('permission-denied')) return 'No tienes permiso para ese proyecto'; if(c.includes('unavailable')) return 'Sin conexión'; return (e&&e.message)||String(e); }
+
 function schedulePush(){ if(applyingRemote||!syncCode||syncStatus!=='on') return; clearTimeout(pushTimer); pushTimer=setTimeout(()=>pushToCloudNow(),900); }
 async function pushToCloudNow(force){
-  if(!syncCode) return; const db=ensureFirebase(); if(!db) return;
-  try{ await docRef().set({app:'encomun',...state}); if(force){ for(const m of state.members) if(m.inviteCode) writeInvite(m); for(const k of Object.keys(localStorage)) if(k.startsWith('encomun_photo_')) pushPhoto(k.replace('encomun_photo_',''),localStorage.getItem(k)); } }
-  catch(e){ syncErr=e.message||String(e); syncStatus='error'; render(); }
+  if(!syncCode||!authUser) return; const db=ensureFirebase(); if(!db) return;
+  try{
+    const data=Object.assign({app:'encomun'},stripAcl(state));
+    // mergeFields: sustituye cada campo de los datos sin tocar la lista de miembros con acceso
+    await docRef().set(data,{mergeFields:Object.keys(data)});
+    if(force){ for(const k of Object.keys(localStorage)) if(k.startsWith('encomun_photo_')) pushPhoto(k.replace('encomun_photo_',''),localStorage.getItem(k)); }
+  }catch(e){ syncErr=friendlyErr(e); syncStatus='error'; render(); }
 }
-async function writeInvite(m){ if(!syncCode) return false; const db=ensureFirebase(); if(!db) return false; try{ await col().doc(m.inviteCode).set({app:'encomun-invite',project:syncCode,memberId:m.id,name:m.name,at:Date.now()}); return true; }catch(e){ syncErr=e.message||String(e); return false; } }
-async function deleteInvite(code){ try{ await col().doc(code).delete(); }catch(e){} }
-async function pushPhoto(id,data){ if(!syncCode) return; try{ await photoRef(id).set({data,at:Date.now()}); }catch(e){} }
-async function deletePhoto(id){ delete photoCache[id]; localStorage.removeItem('encomun_photo_'+id); if(syncCode){ try{ await photoRef(id).delete(); }catch(e){} } }
+async function writeInvite(m){ if(!syncCode||!authUser) return false; const db=ensureFirebase(); if(!db) return false; try{ await invRef(m.inviteCode).set({app:'sincro-invite',project:syncCode,memberId:m.id,name:m.name,at:Date.now(),by:authUser.uid,usedBy:null}); return true; }catch(e){ syncErr=friendlyErr(e); return false; } }
+async function deleteInvite(code){ try{ await invRef(code).delete(); }catch(e){} }
+async function pushPhoto(id,data){ if(!syncCode||!authUser) return; try{ await photoRef(id).set({data,at:Date.now()}); }catch(e){} }
+async function deletePhoto(id){ delete photoCache[id]; localStorage.removeItem('encomun_photo_'+id); if(syncCode&&authUser){ try{ await photoRef(id).delete(); }catch(e){} } }
 async function getPhoto(id){
-  if(photoCache[id]) return photoCache[id]; const l=localStorage.getItem('encomun_photo_'+id); if(l){ photoCache[id]=l; return l; } if(!syncCode) return null;
+  if(photoCache[id]) return photoCache[id]; const l=localStorage.getItem('encomun_photo_'+id); if(l){ photoCache[id]=l; return l; } if(!syncCode||!authUser) return null;
   try{ const s=await photoRef(id).get(); if(s.exists){ const d=s.data().data; photoCache[id]=d; try{localStorage.setItem('encomun_photo_'+id,d);}catch(e){} return d; } }catch(e){} return null;
 }
 function notifyRemoteChanges(oldExpenses,newExpenses,newMembers){
@@ -1014,39 +1058,133 @@ function notifyRemoteChanges(oldExpenses,newExpenses,newMembers){
     toast(`${who} ${verb}: ${what}`);
   });
 }
+// Lee quién tiene acceso y qué persona del proyecto es esta cuenta
+function readAcl(d){
+  acl={memberUids:d.memberUids||[],uidMember:d.uidMember||{}};
+  if(!authUser) return;
+  const mine=acl.uidMember[authUser.uid];
+  if(mine&&mine!==me){ me=mine; localStorage.setItem(meKey(),me); }
+  else if(!mine&&me&&state.members.find(m=>m.id===me)){ docRef().update({['uidMember.'+authUser.uid]:me}).catch(()=>{}); }
+}
 function applyRemote(remote){
   if(!remote||!remote.members) return;
   if(remote.updatedAt&&state.updatedAt&&remote.updatedAt<=state.updatedAt) return;
   const prevExpenses=state.expenses||[];
-  applyingRemote=true; state=migrate(JSON.parse(JSON.stringify(remote))); delete state.app; if(!state.members.find(m=>m.id===me)) me=(state.members[0]||{}).id||null; saveLocal(); render(); applyingRemote=false;
+  applyingRemote=true; state=migrate(stripAcl(remote)); if(!state.members.find(m=>m.id===me)) me=(state.members[0]||{}).id||null; saveLocal(); render(); applyingRemote=false;
   notifyRemoteChanges(prevExpenses,state.expenses,state.members);
 }
 async function startSync(){
-  if(!syncCode){ syncStatus='off'; render(); return; }
+  if(!syncCode||!authUser){ syncStatus='off'; render(); return; }
   syncStatus='connecting'; render(); const db=ensureFirebase(); if(!db){ syncStatus='error'; render(); return; }
   try{
     const snap=await docRef().get();
-    if(snap.exists){ const remote=snap.data(); if(!(state.expenses.length&&(!remote.updatedAt||remote.updatedAt<state.updatedAt))) applyRemote(remote); }
-    syncStatus='on'; await pushToCloudNow(); ensureMyCode(); if(unsub) unsub();
-    unsub=docRef().onSnapshot(s=>{ if(s.exists&&!s.metadata.hasPendingWrites) applyRemote(s.data()); },e=>{ syncErr=e.message||String(e); syncStatus='error'; render(); });
+    if(!snap.exists) throw new Error('Este proyecto no existe o no tienes acceso');
+    const remote=snap.data(); readAcl(remote);
+    if(!(state.expenses.length&&(!remote.updatedAt||remote.updatedAt<state.updatedAt))) applyRemote(remote);
+    syncStatus='on'; await pushToCloudNow(); if(unsub) unsub();
+    unsub=docRef().onSnapshot(s=>{ if(s.exists){ readAcl(s.data()); if(!s.metadata.hasPendingWrites) applyRemote(s.data()); } },e=>{ syncErr=friendlyErr(e); syncStatus='error'; render(); });
+    if(!acl.uidMember[authUser.uid]&&state.members.length) askWhoAmI();
     render();
-  }catch(e){ syncErr=e.message||String(e); syncStatus='error'; render(); }
+  }catch(e){ syncErr=friendlyErr(e); syncStatus='error'; render(); }
+}
+// Si la cuenta aún no está ligada a una persona del proyecto, se pregunta una vez
+function askWhoAmI(){
+  const taken=new Set(Object.values(acl.uidMember||{}));
+  const free=state.members.filter(m=>!taken.has(m.id)&&!m.blocked);
+  const pick=id=>{ me=id; localStorage.setItem(meKey(),me); docRef().update({['uidMember.'+authUser.uid]:id}).catch(()=>{}); render(); };
+  actionMenu('¿Quién eres en «'+state.projectName+'»?', free.map(m=>({text:esc(m.name),run:()=>pick(m.id)})).concat([{text:'Soy una persona nueva',run:()=>{ const n=prompt('Tu nombre:',''); if(!n||!n.trim()) return; const m=newMember(n.trim(),state.members.length); state.members.push(m); commit(); pick(m.id); }}]));
 }
 function setCode(code){ if(unsub){unsub();unsub=null;} syncCode=code; if(code) localStorage.setItem(LS_CODE,code); else localStorage.removeItem(LS_CODE); }
 function switchProject(code){ setCode(code); loadLocal(); saveLocal(); form=null; showView('inicio'); render(); startSync(); }
-function createProject(name,myName){ setCode('p-'+genCode(name)); state=freshState(); state.projectName=name; const m=newMember(myName,0); state.members=[m]; state.adminId=m.id; me=m.id; state.updatedAt=Date.now(); saveLocal(); form=null; showView('inicio'); render(); startSync(); }
-async function joinWithCode(code){
-  const db=ensureFirebase(); if(!db) return false;
+async function createProject(name,myName){
+  const pid='p-'+genCode(name); const m=newMember(myName,0);
+  const st=freshState(); st.projectName=name; st.members=[m]; st.adminId=m.id; st.updatedAt=Date.now();
+  if(authUser){ try{ await projRef(pid).set(Object.assign({app:'encomun'},st,{memberUids:[authUser.uid],uidMember:{[authUser.uid]:m.id},joins:{}})); cloudProjects.unshift({code:pid,name}); }catch(e){ toast('No se ha podido crear en la nube: '+friendlyErr(e)); } }
+  setCode(pid); state=st; me=m.id; saveLocal(); form=null; showView('inicio'); render(); startSync();
+}
+async function loadCloudProjects(){
+  if(!authUser) return; try{ const q=await col().where('memberUids','array-contains',authUser.uid).get(); cloudProjects=q.docs.map(d=>({code:d.id,name:(d.data().projectName)||'Sincro'})); }catch(e){ syncErr=friendlyErr(e); }
+}
+
+// ---------- Paso de proyectos antiguos (sync_codes) a la versión con cuentas ----------
+async function copyLegacyPhotos(code){
+  try{ const q=await legacyRef(code).collection('users').get(); for(const d of q.docs){ if(!d.id.startsWith('foto_')) continue; try{ await projRef(code).collection('fotos').doc(d.id.slice(5)).set(d.data()); }catch(e){} } }catch(e){}
+}
+// Añade lo que se haya apuntado en la versión antigua después del paso (por si alguien aún no había actualizado)
+async function mergeLegacyChanges(code,od){
   try{
-    const s=await col().doc(code).get(); if(!s.exists) return false; const d=s.data();
-    if(d.app==='encomun-invite'&&d.project){ setCode(d.project); state=freshState(); me=d.memberId; localStorage.setItem(meKey(),me); saveLocal(); form=null; showView('inicio'); render(); await startSync(); return true; }
-    if(d.app==='encomun'&&d.members){
-      const existing=(d.members||[]).map(x=>x.name).join(', ');
-      if(!confirm(`Este es el código general del proyecto "${d.projectName||''}", no un código personal.\n\nSi continúas, entrarás como una persona NUEVA, distinta de: ${existing}.\n\nSi tú ya eres una de esas personas, cancela y usa tu código personal (Ajustes → Proyecto, en el dispositivo donde ya tienes cuenta).`)) return false;
-      const my=prompt('Tu nombre (nuevo en el proyecto):',''); if(!my||!my.trim()) return false; setCode(code); state=migrate(JSON.parse(JSON.stringify(d))); delete state.app; const m=newMember(my.trim(),state.members.length); state.members.push(m); me=m.id; state.updatedAt=Date.now(); saveLocal(); form=null; showView('inicio'); render(); await startSync(); return true;
+    const s=await projRef(code).get(); if(!s.exists) return; const nd=s.data(); const since=nd.migratedAt||0;
+    const late=(od.expenses||[]).filter(e=>(e.updatedAt||e.createdAt||0)>since); if(!late.length) return;
+    const byId={}; (nd.expenses||[]).forEach(e=>byId[e.id]=e);
+    let changed=false; late.forEach(e=>{ const cur=byId[e.id]; if(!cur||(e.updatedAt||0)>(cur.updatedAt||0)){ byId[e.id]=e; changed=true; } });
+    const members=(nd.members||[]).slice(); (od.members||[]).forEach(m=>{ if(!members.find(x=>x.id===m.id)){ members.push(m); changed=true; } });
+    if(changed) await projRef(code).update({expenses:Object.values(byId),members,updatedAt:Date.now()});
+  }catch(e){}
+}
+async function migrateLegacy(code){
+  if(!authUser||!code||code==='local') return false;
+  let od=null; try{ const o=await legacyRef(code).get(); if(o.exists) od=o.data(); }catch(e){}
+  let isMember=false; try{ isMember=(await projRef(code).get()).exists; }catch(e){}
+  if(isMember){ if(od&&od.app==='encomun'&&od.migratedTo===code) await mergeLegacyChanges(code,od); return true; }
+  if(!od||od.app!=='encomun') return false;
+  const uidNow=authUser.uid; const myId=localStorage.getItem('encomun_me_'+code)||null;
+  if(!od.migratedTo){
+    // Primera persona del proyecto en entrar con cuenta: crea la copia nueva
+    const data=Object.assign({},stripAcl(od),{app:'encomun',memberUids:[uidNow],uidMember:myId?{[uidNow]:myId}:{},joins:{},migratedFrom:code,migratedAt:Date.now()});
+    let created=false; try{ await projRef(code).set(data); created=true; }catch(e){}
+    if(created){ try{ await legacyRef(code).update({migratedTo:code,migratedAt:data.migratedAt}); }catch(e){} await copyLegacyPhotos(code); return true; }
+    try{ const o=await legacyRef(code).get(); od=o.data(); }catch(e){}
+    if(!od||od.migratedTo!==code) return false;
+  }
+  // Ya lo pasó otra persona: entra demostrando que conoce el código antiguo
+  try{
+    const upd={memberUids:FV().arrayUnion(uidNow),['joins.'+uidNow]:code}; if(myId) upd['uidMember.'+uidNow]=myId;
+    await projRef(code).update(upd);
+  }catch(e){ syncErr=friendlyErr(e); return false; }
+  await mergeLegacyChanges(code,od); await copyLegacyPhotos(code);
+  return true;
+}
+async function migrateAllLegacy(){
+  const codes=new Set(localProjects().map(p=>p.code).filter(c=>c&&c!=='local')); if(syncCode) codes.add(syncCode);
+  for(const c of codes){ try{ await migrateLegacy(c); }catch(e){} }
+}
+
+// ---------- Entrar en un proyecto con un código ----------
+function openProject(pid,memberId){ setCode(pid); loadLocal(); if(memberId){ me=memberId; localStorage.setItem(meKey(),me); } if(!cloudProjects.find(p=>p.code===pid)) cloudProjects.unshift({code:pid,name:state.projectName}); saveLocal(); form=null; showView('inicio'); render(); startSync(); }
+async function joinWithCode(code){
+  syncErr=''; code=(code||'').trim(); if(!code) return false;
+  const db=ensureFirebase(); if(!db||!authUser){ syncErr='Necesitas conexión y haber entrado con tu cuenta'; return false; }
+  // 1) Invitación nueva
+  try{
+    const s=await invRef(code).get();
+    if(s.exists){
+      const d=s.data();
+      if(d.usedBy&&d.usedBy!==authUser.uid){ syncErr='Ese código ya lo ha usado otra persona. Pide uno nuevo.'; return false; }
+      let member=false; try{ member=(await projRef(d.project).get()).exists; }catch(e){}
+      if(!member){
+        const b=db.batch();
+        if(!d.usedBy) b.update(invRef(code),{usedBy:authUser.uid});
+        b.update(projRef(d.project),{memberUids:FV().arrayUnion(authUser.uid),['joins.'+authUser.uid]:code,['uidMember.'+authUser.uid]:d.memberId});
+        await b.commit();
+      }
+      openProject(d.project,d.memberId); return true;
     }
-    return false;
-  }catch(e){ syncErr=e.message||String(e); return false; }
+  }catch(e){ syncErr=friendlyErr(e); return false; }
+  // 2) Códigos de la versión antigua (personales o del proyecto)
+  try{
+    const s=await legacyRef(code).get();
+    if(s.exists){
+      const d=s.data();
+      if(d.app==='encomun-invite'&&d.project){ localStorage.setItem('encomun_me_'+d.project,d.memberId); if(await migrateLegacy(d.project)){ openProject(d.project,d.memberId); return true; } return false; }
+      if(d.app==='encomun'){ if(await migrateLegacy(code)){ openProject(code,null); return true; } return false; }
+    }
+  }catch(e){ syncErr=friendlyErr(e); }
+  if(!syncErr) syncErr='No se encuentra ese código';
+  return false;
+}
+async function logout(){
+  if(!confirm('¿Cerrar sesión en este dispositivo?')) return;
+  setCode(''); try{ await ensureAuth().signOut(); }catch(e){} location.reload();
 }
 
 /* ============================ ARRANQUE ============================ */
@@ -1058,11 +1196,61 @@ document.querySelectorAll('#setupMode button').forEach(b=>b.onclick=()=>{ setupM
 function renderSetupRecent(){ const list=projects().filter(p=>p.code&&p.code!=='local'); $('setupRecent').innerHTML = list.length ? ('<div class="help" style="margin-bottom:8px">Proyectos recientes en este dispositivo:</div>'+list.map(p=>`<button type="button" class="row" data-code="${esc(p.code)}"><span class="emoji">📁</span><span><span class="t">${esc(p.name)}</span></span><span class="amt small">abrir</span></button>`).join('')) : ''; $('setupRecent').querySelectorAll('[data-code]').forEach(b=>b.onclick=()=>{ localStorage.setItem('encomun_setup_v2','1'); $('setup').classList.add('hide'); $('app').classList.remove('hide'); settingsBind(); switchProject(b.dataset.code); }); }
 $('setupGo').onclick=async()=>{
   $('setupMsg').textContent='';
-  if(setupMode==='new'){ const n=$('setupName').value.trim(), my=$('setupMyName').value.trim(); if(!n||!my){ $('setupMsg').textContent='Escribe el nombre del proyecto y el tuyo.'; return; } localStorage.setItem('encomun_setup_v2','1'); $('setup').classList.add('hide'); $('app').classList.remove('hide'); settingsBind(); createProject(n,my); }
-  else{ const c=$('setupCode').value.trim(); if(!c){ $('setupMsg').textContent='Escribe tu código.'; return; } $('setupMsg').textContent='Buscando el proyecto…'; settingsBind(); const ok=await joinWithCode(c); if(ok){ localStorage.setItem('encomun_setup_v2','1'); $('setup').classList.add('hide'); $('app').classList.remove('hide'); } else $('setupMsg').textContent='No se encuentra ese código. Revisa que esté bien escrito y que tengas conexión. '+(syncErr?'('+syncErr+')':''); }
+  if(setupMode==='new'){ const n=$('setupName').value.trim(), my=$('setupMyName').value.trim(); if(!n||!my){ $('setupMsg').textContent='Escribe el nombre del proyecto y el tuyo.'; return; } $('setupMsg').textContent='Creando el proyecto…'; settingsBind(); await createProject(n,my); enterApp(); }
+  else{ const c=$('setupCode').value.trim(); if(!c){ $('setupMsg').textContent='Escribe tu código.'; return; } $('setupMsg').textContent='Buscando el proyecto…'; settingsBind(); const ok=await joinWithCode(c); if(ok) enterApp(); else $('setupMsg').textContent=syncErr||'No se encuentra ese código. Revisa que esté bien escrito y que tengas conexión.'; }
 };
-if(!localStorage.getItem('encomun_setup_v2')){ $('setup').classList.remove('hide'); $('setupName').value='Casa 2026'; }
-else { loadLocal(); $('app').classList.remove('hide'); settingsBind(); render(); startSync(); }
+
+/* ---------- Cuenta: entrar, crear cuenta, recuperar contraseña ---------- */
+function showOnly(id){ ['login','setup','app'].forEach(x=>$(x).classList.toggle('hide',x!==id)); }
+function enterApp(){ localStorage.setItem('encomun_setup_v2','1'); showOnly('app'); }
+const AUTH_ERR={'invalid-credential':'Correo o contraseña incorrectos.','wrong-password':'Contraseña incorrecta.','user-not-found':'No hay ninguna cuenta con ese correo. Pulsa «Crear cuenta».','email-already-in-use':'Ya existe una cuenta con ese correo. Pulsa «Entrar».','weak-password':'La contraseña debe tener al menos 6 caracteres.','invalid-email':'El correo no es válido.','too-many-requests':'Demasiados intentos. Espera unos minutos.','network-request-failed':'Sin conexión.','operation-not-allowed':'El acceso con correo y contraseña no está activado en Firebase.'};
+function authMsg(e){ const c=(e&&e.code)||''; for(const k in AUTH_ERR) if(c.includes(k)) return AUTH_ERR[k]; return (e&&e.message)||String(e); }
+async function doLogin(create){
+  const em=$('loginEmail').value.trim(), pw=$('loginPass').value;
+  if(!em||!pw){ $('loginMsg').textContent='Escribe tu correo y tu contraseña.'; return; }
+  const a=ensureAuth(); if(!a){ $('loginMsg').textContent='No hay conexión. '+syncErr; return; }
+  $('loginMsg').textContent=create?'Creando la cuenta…':'Entrando…';
+  try{ if(create) await a.createUserWithEmailAndPassword(em,pw); else await a.signInWithEmailAndPassword(em,pw); }
+  catch(e){ $('loginMsg').textContent=authMsg(e); }
+}
+$('loginGo').onclick=()=>doLogin(false);
+$('loginCreate').onclick=()=>doLogin(true);
+$('loginPass').onkeydown=e=>{ if(e.key==='Enter') doLogin(false); };
+$('loginForgot').onclick=async()=>{
+  const em=$('loginEmail').value.trim(); if(!em){ $('loginMsg').textContent='Escribe tu correo arriba y vuelve a pulsar.'; return; }
+  try{ await ensureAuth().sendPasswordResetEmail(em); $('loginMsg').textContent='Te hemos enviado un correo para cambiar la contraseña (mira también en «spam»).'; }
+  catch(e){ $('loginMsg').textContent=authMsg(e); }
+};
+
+async function afterLogin(){
+  showOnly('login'); $('loginMsg').textContent='Cargando tus proyectos…';
+  await migrateAllLegacy();
+  await loadCloudProjects();
+  settingsBind();
+  const last=localStorage.getItem(LS_CODE)||'';
+  let target=cloudProjects.find(p=>p.code===last)?last:((cloudProjects[0]||{}).code||'');
+  // Sin conexión: abre lo último que había en este móvil
+  if(!target&&last&&localStorage.getItem('encomun_state_'+last)) target=last;
+  if(target){ enterApp(); switchProject(target); return; }
+  $('setupAccount').innerHTML='Has entrado como <b>'+esc(authUser.email||'')+'</b> · <a href="#" id="setupLogout">cambiar de cuenta</a>';
+  $('setupLogout').onclick=ev=>{ ev.preventDefault(); logout(); };
+  if(!$('setupName').value) $('setupName').value='Casa 2026';
+  showOnly('setup');
+}
+
+const authApi=ensureAuth();
+if(!authApi){
+  // Sin Firebase (sin conexión): se puede consultar lo guardado en este móvil
+  if(localStorage.getItem('encomun_setup_v2')){ loadLocal(); showOnly('app'); settingsBind(); syncStatus='error'; render(); }
+  else { showOnly('login'); $('loginMsg').textContent='No hay conexión. '+syncErr; }
+} else {
+  authApi.onAuthStateChanged(u=>{
+    const prev=authUser; authUser=u;
+    if(!u){ showOnly('login'); $('loginMsg').textContent=''; return; }
+    if(prev&&prev.uid===u.uid) return;
+    afterLogin();
+  });
+}
 </script>
 </body>
 </html>
